@@ -215,7 +215,7 @@
      Reads the HA entity registry to find all MHUB entities.
      No config required.
   ═══════════════════════════════════════════════════════════ */
-  function discoverMhub(hass, forcedEntryId, mhubEntityIds, mhubRegistry) {
+  function discoverMhub(hass, forcedEntryId, mhubEntityIds, mhubRegistry, deviceNames) {
     const all = Object.values(hass.states);
 
     /* ── Hub-level sensors ──
@@ -354,32 +354,21 @@
       });
     }
 
-    /* ── Group IR buttons by device name from registry or friendly_name ── */
+    /* ── Group IR buttons by device name ── */
     const irMap = {};
     irButtons.forEach(function(btn) {
-      /* Use the registry entry's device name if available */
-      const regEntry = mhubRegistry && mhubRegistry.find(function(e){ return e.entity_id === btn.entity_id; });
-      /* Group key: try to find a matching zone, else use device area or fallback */
-      const slug5  = btn.entity_id.replace("button.", "");
-      const zSlug  = zoneSlugs.find(function(zs){ return slug5.startsWith(zs + "_"); });
-      const zone   = zSlug && zones.find(function(z){ return z.media_player.replace("media_player.","") === zSlug; });
-
-      /* Device group name — use area_id or derive from entity_id */
-      let groupKey, devName;
-      if (zone) {
-        groupKey = zSlug;
-        devName  = zone.label + " IR";
-      } else {
-        /* For input/global IR packs, group by the friendly_name prefix */
-        const fn = btn.attributes.friendly_name || "";
-        /* Strip the command name (last word group after last known separator) */
-        groupKey = fn.replace(/\s+\S+$/, "").trim() || "IR";
-        devName  = groupKey;
-      }
-
+      /* Use the device name from registry if available — this is set by the integration
+         to something like "Living Room (Output A) - Samsung TV" or "Source - Denon AVR" */
+      const devName = (deviceNames && deviceNames[btn.entity_id]) || (function() {
+        const slug5  = btn.entity_id.replace("button.", "");
+        const zSlug  = zoneSlugs.find(function(zs){ return slug5.startsWith(zs + "_"); });
+        const zone   = zSlug && zones.find(function(z){ return z.media_player.replace("media_player.","") === zSlug; });
+        return zone ? (zone.label + " IR") : "IR";
+      })();
+      const groupKey = devName;
       if (!irMap[groupKey]) irMap[groupKey] = { name: devName, commands: [] };
       const cmdName = btn.attributes.friendly_name ||
-                      slug5.replace((zSlug ? zSlug + "_" : ""), "").replace(/_/g, " ").trim();
+                      btn.entity_id.replace("button.", "").replace(/_/g, " ").trim();
       irMap[groupKey].commands.push({ name: cmdName, entity: btn.entity_id });
     });
 
@@ -890,9 +879,24 @@
             }
           }.bind(this));
 
-          this._mhubEntityIds = mhubEids;
-          this._mhubRegistry  = { seqEids, irEids, cecEids };
-          this._disc = discoverMhub(this._hass, this._cfg.entry_id, mhubEids, { seqEids, irEids, cecEids });
+          /* Build map: entity_id → device name (for IR grouping labels) */
+          const deviceIdToName = {};
+          (deviceEntries || []).forEach(function(d) {
+            if (d.name) deviceIdToName[d.id] = d.name;
+          });
+
+          /* Build map: entity_id → device name */
+          const entityDeviceNames = {};
+          (entityEntries || []).filter(function(e){ return e.platform === "mhub"; }).forEach(function(e) {
+            if (e.device_id && deviceIdToName[e.device_id]) {
+              entityDeviceNames[e.entity_id] = deviceIdToName[e.device_id];
+            }
+          });
+
+          this._mhubEntityIds   = mhubEids;
+          this._mhubRegistry    = { seqEids, irEids, cecEids };
+          this._deviceNames     = entityDeviceNames;
+          this._disc = discoverMhub(this._hass, this._cfg.entry_id, mhubEids, { seqEids, irEids, cecEids }, entityDeviceNames);
           this._live();
         })
         .catch(() => { /* registry unavailable — fallback already rendered */ })
@@ -901,7 +905,7 @@
 
     _buildCard(mhubEntityIds) {
       return new Promise((resolve) => {
-        this._disc  = discoverMhub(this._hass, this._cfg.entry_id, mhubEntityIds, this._mhubRegistry || null);
+        this._disc  = discoverMhub(this._hass, this._cfg.entry_id, mhubEntityIds, this._mhubRegistry || null, this._deviceNames || {});
         this._zone  = 0;
         const sh    = this._sh;
         sh.innerHTML= "";
@@ -966,7 +970,7 @@
       const rb = this._el("rbtn");
       if (rb) rb.addEventListener("click", () => {
         /* re-discover in case integration reloaded */
-        this._disc = discoverMhub(this._hass, this._cfg.entry_id, this._mhubEntityIds || new Set(), this._mhubRegistry || null);
+        this._disc = discoverMhub(this._hass, this._cfg.entry_id, this._mhubEntityIds || new Set(), this._mhubRegistry || null, this._deviceNames || {});
         this._renderPage();
         const f = this._el("ftxt"); if (f) f.textContent = "Updated just now";
       });
@@ -1197,7 +1201,9 @@
     /* ═══ SEQUENCES ══════════════════════════════════════════ */
     _seq() {
       const body = this._el("seqb");
-      if (!body||body.children.length) return;
+      if (!body) return;
+      /* Only skip rebuild if we have real sequence buttons rendered already */
+      if (body.querySelector(".seqb")) return;
       const seqs = this._disc?.sequences||[];
       if (!seqs.length) { body.innerHTML=`<div class="empty">No sequences found.<br>Create sequences in the MHUB app — they appear here automatically.</div>`; return; }
       const norm=seqs.filter(s=>s.kind==="sequence"||!s.kind);
@@ -1215,9 +1221,14 @@
     /* ═══ IR / CEC ═══════════════════════════════════════════ */
     _ir() {
       const body = this._el("irb");
-      if (!body||body.children.length) return;
+      if (!body) return;
       const irs  = this._disc?.ir_devices ||[];
       const cecs = this._disc?.cec_devices||[];
+
+      /* Only skip rebuild if we already have real content rendered.
+         If body only contains the empty-state message, allow a re-render
+         so that async registry data can populate the IR buttons. */
+      if (body.children.length && body.querySelector(".irdev")) return;
       if (!irs.length&&!cecs.length) { body.innerHTML=`<div class="empty">No IR or CEC devices found.<br>Configure IR packs in the MHUB integration options.</div>`; return; }
       const block=(devs,lbl)=>{
         let h=`<div class="slbl">${lbl}</div>`;
