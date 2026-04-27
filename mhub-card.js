@@ -1,5 +1,5 @@
 /**
- * mhub-card.js — v5.1.0
+ * mhub-card.js — v5.2.0
  * Self-configuring Lovelace card for the MHUB integration.
  *
  * Zero manual setup. The card reads your HA entity registry,
@@ -557,16 +557,16 @@
             const hidden    = (cfg.hidden_inputs || []).includes(name);
             const b         = brand(name);
             let previewSrc  = "";
-            if (icon) {
-              try {
-                if (typeof icon === "string" && icon.startsWith("mhub_icon_")) {
-                  previewSrc = localStorage.getItem(icon) || "";
-                } else if (typeof icon === "string" && icon.startsWith("{")) {
-                  previewSrc = JSON.parse(icon).dataUrl || icon;
-                } else if (typeof icon === "string") {
-                  previewSrc = icon.split("#mhub-")[0];
-                }
-              } catch(_) { previewSrc = ""; }
+            if (icon && typeof icon === "string") {
+              if (icon.startsWith("/api/image/serve/") || icon.startsWith("/local/") || icon.startsWith("data:")) {
+                previewSrc = icon;
+              } else if (icon.startsWith("mhub_icon_")) {
+                try { previewSrc = localStorage.getItem(icon) || ""; } catch(_) {}
+              } else if (icon.startsWith("{")) {
+                try { previewSrc = JSON.parse(icon).dataUrl || ""; } catch(_) {}
+              } else {
+                previewSrc = icon.split("#mhub-")[0];
+              }
             }
             const previewHtml = previewSrc
               ? `<img src="${x(previewSrc)}" alt="">`
@@ -657,7 +657,7 @@
         /* "Choose image" opens the hidden file input */
         if (uplBtn) uplBtn.addEventListener("click", () => fileInput.click());
 
-        /* File selected — read as data URL and save */
+        /* File selected — upload to HA Image registry (server-side, all devices see it) */
         if (fileInput) fileInput.addEventListener("change", async () => {
           const file = fileInput.files[0];
           if (!file) return;
@@ -666,50 +666,45 @@
           uplBtn.disabled = true;
 
           try {
-            /* Attempt to upload to /local/mhub-icons/ via HA file upload API */
-            let iconUrl = null;
+            const token = this._hass.auth.data.access_token;
 
-            try {
-              const token = this._hass.auth.data.access_token;
-              const slug  = "mhub_" + srcName.replace(/[^a-zA-Z0-9]/g,"_").toLowerCase()
-                          + "." + (file.name.split(".").pop().toLowerCase() || "png");
-              const fd = new FormData();
-              fd.append("file", file, slug);
+            /* ── Step 1: Create an image entity via the HA Image upload API.
+                  POST /api/image/upload  (available in all HA installs since 2023.6)
+                  Returns { id, content_type, ... }
+                  The resulting URL /api/image/serve/{id}/512x512 is:
+                    • stored server-side — survives reboots
+                    • accessible from any device (phone, tablet, remote access)
+                    • served through the same HA auth as the rest of the UI       */
+            const fd = new FormData();
+            fd.append("file", file, file.name);
 
-              /* HA core file upload endpoint (available in all installs) */
-              const r = await fetch(`/local/mhub-icons/${slug}`, { method:"HEAD",
-                headers:{ Authorization:`Bearer ${token}` } }).catch(()=>null);
+            const resp = await fetch("/api/image/upload", {
+              method: "POST",
+              headers: { Authorization: `Bearer ${token}` },
+              body: fd,
+            });
 
-              /* Upload via hassio supervisor API if present */
-              const up = await fetch("/api/hassio/homeassistant/upload/local/mhub-icons/" + slug, {
-                method:"POST", headers:{ Authorization:`Bearer ${token}` }, body: fd
-              }).catch(()=>null);
+            if (!resp.ok) throw new Error(`HA image upload failed: ${resp.status}`);
 
-              if (up && up.ok) {
-                iconUrl = `/local/mhub-icons/${slug}`;
+            const data = await resp.json();
+            /* data.id is the stable image entity ID, e.g. "abc123def456" */
+            const iconUrl = `/api/image/serve/${data.id}/512x512`;
+
+            /* ── Step 2: If there was a previous image for this input,
+                  delete the old HA image entity to avoid orphans. */
+            const prevRaw = (this._cfg.input_icons || {})[srcName];
+            if (prevRaw && typeof prevRaw === "string") {
+              const prevId = prevRaw.match(/\/api\/image\/serve\/([^/]+)\//)?.[1];
+              if (prevId) {
+                fetch(`/api/image/${prevId}`, {
+                  method: "DELETE",
+                  headers: { Authorization: `Bearer ${token}` },
+                }).catch(() => {});   /* best-effort, don't block */
               }
-            } catch(_) {}
-
-            /* Store the image in localStorage (keyed by a unique token) so
-               the HA card config only ever contains a short unique reference.
-               This completely bypasses HA's config-changed deduplication since
-               two identical images will always have different tokens. */
-            if (!iconUrl) {
-              const dataUrl = await new Promise((res, rej) => {
-                const reader = new FileReader();
-                reader.onload = () => res(reader.result);
-                reader.onerror = rej;
-                reader.readAsDataURL(file);
-              });
-
-              /* Generate a unique token for this input */
-              const token = "mhub_icon_" + Date.now() + "_" + Math.random().toString(36).slice(2);
-
-              /* Store image data in localStorage under the token */
-              try { localStorage.setItem(token, dataUrl); } catch(_) {}
-
-              /* Only the token goes into the card config — always unique */
-              iconUrl = token;
+              /* Also clean up any legacy localStorage token */
+              if (prevRaw.startsWith("mhub_icon_")) {
+                try { localStorage.removeItem(prevRaw); } catch(_) {}
+              }
             }
 
             const c = Object.assign({}, this._cfg||{});
@@ -717,9 +712,12 @@
             this._save(c);
             this._render();   /* refresh preview */
           } catch(err) {
-            uplBtn.textContent = "Choose image";
+            uplBtn.textContent = "Image";
             uplBtn.disabled = false;
             console.error("MHUB icon upload failed:", err);
+            /* Show a brief error message in the button */
+            uplBtn.textContent = "Upload failed";
+            setTimeout(() => { uplBtn.textContent = "Image"; }, 3000);
           }
         });
 
@@ -739,10 +737,21 @@
         if (clrBtn) clrBtn.addEventListener("click", () => {
           const c = Object.assign({}, this._cfg||{});
           const icons = Object.assign({}, c.input_icons||{});
-          /* Remove from localStorage if it was a token */
-          const token = icons[srcName];
-          if (token && typeof token === "string" && token.startsWith("mhub_icon_")) {
-            try { localStorage.removeItem(token); } catch(_) {}
+          const raw = icons[srcName];
+          if (raw && typeof raw === "string") {
+            /* Delete the HA image entity if it was uploaded via Image API */
+            const imgId = raw.match(/\/api\/image\/serve\/([^/]+)\//)?.[1];
+            if (imgId) {
+              const tok = this._hass.auth.data.access_token;
+              fetch(`/api/image/${imgId}`, {
+                method: "DELETE",
+                headers: { Authorization: `Bearer ${tok}` },
+              }).catch(() => {});
+            }
+            /* Clean up legacy localStorage token */
+            if (raw.startsWith("mhub_icon_")) {
+              try { localStorage.removeItem(raw); } catch(_) {}
+            }
           }
           delete icons[srcName];
           if (!Object.keys(icons).length) delete c.input_icons;
@@ -807,22 +816,29 @@
        If a custom image is configured, renders an <img>.
        Otherwise falls back to the colour badge. */
     /* Extract the actual image URL from whatever format is stored in config.
-       Handles: localStorage token (mhub_icon_*), plain data URL, /local/ path,
-       and legacy JSON-wrapped or fragment formats. */
+       New format:  /api/image/serve/{id}/512x512  (HA Image API — server-side, all devices)
+       Legacy:      mhub_icon_* localStorage token, plain data URL, /local/ path */
     _extractUrl(raw) {
       if (!raw) return null;
       if (typeof raw === "object" && raw.dataUrl) return raw.dataUrl;
       if (typeof raw === "string") {
-        /* localStorage token */
+        /* New format: HA Image API URL — just use it directly */
+        if (raw.startsWith("/api/image/serve/")) return raw;
+        /* /local/ path */
+        if (raw.startsWith("/local/")) return raw;
+        /* data URL */
+        if (raw.startsWith("data:")) return raw;
+        /* Legacy localStorage token */
         if (raw.startsWith("mhub_icon_")) {
           try { return localStorage.getItem(raw) || null; } catch(_) { return null; }
         }
         /* Legacy JSON wrapper */
         if (raw.startsWith("{")) {
-          try { const p = JSON.parse(raw); return p.dataUrl || raw; } catch(_) {}
+          try { const p = JSON.parse(raw); return p.dataUrl || null; } catch(_) {}
         }
-        /* Legacy fragment */
-        return raw.split("#mhub-")[0];
+        /* Legacy fragment format */
+        const stripped = raw.split("#mhub-")[0];
+        if (stripped) return stripped;
       }
       return null;
     }
@@ -1363,7 +1379,7 @@
   });
 
   console.info(
-    "%c MHUB-CARD %c v5.1.0 ",
+    "%c MHUB-CARD %c v5.2.0 ",
     "background:#3b8aff;color:#fff;font-weight:bold;padding:2px 4px;border-radius:4px 0 0 4px",
     "background:#0d0f14;color:#3b8aff;font-weight:bold;padding:2px 4px;border-radius:0 4px 4px 0"
   );
