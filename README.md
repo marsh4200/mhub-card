@@ -22,7 +22,7 @@
 | 👁️ **Hide unused inputs** | Blank inputs can be hidden from the card entirely |
 | 🔊 **Volume control** | Per-zone and group volume sliders with mute toggle |
 | ▶️ **Sequences & Functions** | Run MHUB sequences and functions directly from the card |
-| 📡 **IR / CEC control** | Fire IR and CEC commands from your configured IR packs |
+| 📡(UNDER CONSTRUCTION) **IR / CEC control** | Fire IR and CEC commands from your configured IR packs | (UNDER CONSTRUCTION)
 | 🏷️ **Output aliases** | Rename outputs (e.g. "Output B" → "Main Bedroom") |
 | 📋 **Diagnostics** | Live hub model, firmware, API version, input/output count |
 | ⚡ **Optimistic UI** | Source switches update instantly without waiting for HA poll |
@@ -206,4 +206,4 @@ These source names are automatically detected and given brand-accurate colours a
 
 ## 📄 Version
 
-**mhub-card v5.0.0** — Self-configuring Lovelace card for the HDANYWHERE MHUB integration.
+**mhub-card v1** — Self-configuring Lovelace card for the HDANYWHERE MHUB integration.
