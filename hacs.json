@@ -1,0 +1,8 @@
+{
+  "name": "MHUB Card",
+  "description": "Lovelace card for the MHUB matrix switcher integration by HDANYWHERE",
+  "type": "plugin",
+  "documentation": "https://github.com/yourusername/mhub-card",
+  "filename": "mhub-card.js",
+  "version": "1.0.0"
+}
