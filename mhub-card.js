@@ -755,9 +755,17 @@
     static getStubConfig()    { return { title: "" }; }
 
     setConfig(cfg) {
-      this._cfg   = cfg || {};
-      this._ready = false;
-      if (this._hass) this._init();
+      const prev = this._cfg;
+      this._cfg = cfg || {};
+      /* Only do a full rebuild (which resets the card and re-fetches the registry)
+         if this is the first load. For subsequent config-changed events fired by the
+         editor (e.g. toggling a source icon or alias), just re-render the current page
+         so the nav tabs and user's position in the card are preserved. */
+      if (!this._ready) {
+        if (this._hass) this._init();
+      } else {
+        this._live();
+      }
     }
 
     set hass(h) {
@@ -831,20 +839,27 @@
       if (!this._hass) return;
       if (this._initPending) return;   /* prevent concurrent inits */
       this._initPending = true;
+      /* Preserve the current page so a config-changed rebuild doesn't jump back to "switch" */
+      const savedPage = this._page || "switch";
       this._buildCard(new Set()).catch(() => {});
+      this._page = savedPage;
+      /* Re-apply the saved page so nav highlight and content are correct after rebuild */
+      this._sh.querySelectorAll(".nb").forEach(n => n.classList.toggle("on", n.dataset.p === savedPage));
+      this._sh.querySelectorAll(".pg").forEach(p => p.classList.toggle("on", p.id === "pg-" + savedPage));
 
-      /* Fetch entity registry to get the definitive list of MHUB platform entities.
-         This lets us filter sequences/buttons to only MHUB ones. */
       /* Fetch entity + device registry to reliably split sequences vs IR vs source buttons.
          Device identifiers from button.py:
            sequences  → hub device:  (DOMAIN, entry_id)
            IR buttons → (DOMAIN, {entry_id}_display_{device_key}) or (DOMAIN, {entry_id}_source_{device_key})
            CEC        → (DOMAIN, {entry_id}_cec_{zone_id})
-           source btns→ (DOMAIN, {entry_id}_{zone_id})  (zone devices)  */
-      Promise.all([
-        this._hass.callWS({ type: "config/entity_registry/list" }),
-        this._hass.callWS({ type: "config/device_registry/list" }),
-      ]).then(([entityEntries, deviceEntries]) => {
+           source btns→ (DOMAIN, {entry_id}_{zone_id})  (zone devices)
+         Retried automatically if the WS call fails (e.g. when accessed off-network). */
+      const _fetchRegistry = (attempt) => {
+        attempt = attempt || 1;
+        Promise.all([
+          this._hass.callWS({ type: "config/entity_registry/list" }),
+          this._hass.callWS({ type: "config/device_registry/list" }),
+        ]).then(([entityEntries, deviceEntries]) => {
           /* Build map: device_id → identifier string */
           const deviceIdToIdentifier = {};
           (deviceEntries || []).forEach(function(d) {
@@ -897,10 +912,28 @@
           this._mhubRegistry    = { seqEids, irEids, cecEids };
           this._deviceNames     = entityDeviceNames;
           this._disc = discoverMhub(this._hass, this._cfg.entry_id, mhubEids, { seqEids, irEids, cecEids }, entityDeviceNames);
+          /* Restore the page the user was on before the registry fetch completed */
+          this._page = savedPage;
+          this._sh.querySelectorAll(".nb").forEach(n => n.classList.toggle("on", n.dataset.p === savedPage));
+          this._sh.querySelectorAll(".pg").forEach(p => p.classList.toggle("on", p.id === "pg-" + savedPage));
           this._live();
         })
-        .catch(() => { /* registry unavailable — fallback already rendered */ })
+        .catch(() => {
+          /* Registry unavailable (e.g. off-network, WS timeout).
+             Retry up to 5 times with exponential backoff so the card
+             self-heals when the connection is restored. */
+          if (attempt < 5) {
+            const delay = Math.min(2000 * Math.pow(2, attempt - 1), 30000);
+            setTimeout(() => {
+              if (this._hass) _fetchRegistry(attempt + 1);
+            }, delay);
+          }
+          /* The card already rendered with hass.states data — it just won't
+             have sequence/IR classification until the registry comes back. */
+        })
         .finally(() => { this._initPending = false; });
+      };
+      _fetchRegistry(1);
     }
 
     _buildCard(mhubEntityIds) {
