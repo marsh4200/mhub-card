@@ -215,7 +215,9 @@ These source names are automatically detected and given brand-accurate colours a
 
 ### Diagnostics
 ![MHUB Card Screenshot 3](images/Card3.png)
+
 ![MHUB Card Screenshot 3](images/Card4.png)
+
 
 ### Features
 ![MHUB Card Screenshot 3](images/Card5.png)
