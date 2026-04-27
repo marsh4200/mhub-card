@@ -203,7 +203,21 @@ These source names are automatically detected and given brand-accurate colours a
 | Media player entities | Must be **manually enabled** after integration setup |
 
 ---
+---
+
+## 🖼️ Card Screenshots
+
+### MHUB Card Overview
+![MHUB Card Screenshot 1](images/Card.png)
+
+### Source Switching / Controls
+![MHUB Card Screenshot 2](images/Card2.png)
+
+### Diagnostics / Features
+![MHUB Card Screenshot 3](images/Card3.png)
+
+---
 
 ## 📄 Version
 
-**mhub-card v1** — Self-configuring Lovelace card for the HDANYWHERE MHUB integration.
+**mhub-card ** — Self-configuring Lovelace card for the HDANYWHERE MHUB integration.
