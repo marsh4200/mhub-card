@@ -1,5 +1,5 @@
 /**
- * mhub-card.js — v5.0.0
+ * mhub-card.js — v5.1.0
  * Self-configuring Lovelace card for the MHUB integration.
  *
  * Zero manual setup. The card reads your HA entity registry,
@@ -509,7 +509,7 @@
                          color:var(--primary-text-color,#333); font-size:14px; font-family:inherit; }
 
           /* Input icon editor */
-          .irow { display:flex; align-items:center; gap:10px; padding:7px 0;
+          .irow { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:9px 0;
                   border-bottom:1px solid var(--divider-color,rgba(0,0,0,.06)); }
           .irow:last-child { border-bottom:none; }
           .ipreview { width:40px; height:40px; border-radius:8px; flex-shrink:0;
@@ -517,8 +517,13 @@
                       font-size:11px; font-weight:800; overflow:hidden;
                       border:1px solid var(--divider-color,rgba(0,0,0,.12)); }
           .ipreview img { width:100%; height:100%; object-fit:cover; border-radius:7px; }
-          .iname { flex:1; font-size:13px; color:var(--primary-text-color,#333); min-width:0;
-                   overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+          .iname { font-size:11px; color:var(--secondary-text-color,#888); white-space:nowrap;
+                   overflow:hidden; text-overflow:ellipsis; max-width:90px; flex-shrink:0; }
+          .irename { flex:1; min-width:90px; padding:5px 8px; border-radius:6px;
+                     border:1px solid var(--divider-color,#ccc);
+                     background:var(--card-background-color,#fff);
+                     color:var(--primary-text-color,#333); font-size:13px; font-family:inherit; }
+          .irename:focus { outline:none; border-color:var(--primary-color,#3b8aff); }
           .ibtn  { padding:4px 10px; border-radius:6px; border:1px solid var(--divider-color,#ccc);
                    background:transparent; color:var(--primary-text-color,#555);
                    font-size:12px; cursor:pointer; font-family:inherit; white-space:nowrap; }
@@ -542,15 +547,16 @@
             Make sure the MHUB integration is installed and your hub is connected.</p>`}
 
           ${sourceNames.length ? `
-          <div class="sec">Input icons &amp; visibility</div>
+          <div class="sec">Inputs — names, icons &amp; visibility</div>
           <p style="font-size:12px;color:var(--secondary-text-color,#888);margin-bottom:10px;line-height:1.5">
-            Upload an image for each input, or hide unused ones from the card.
+            Rename inputs (leave blank to use the name from MHUB), upload a custom image, or hide unused ones.
           </p>
           ${sourceNames.map(name => {
-            const icon   = inputIcons[name];
-            const hidden = (cfg.hidden_inputs || []).includes(name);
-            const b      = brand(name);
-            let previewSrc = "";
+            const icon      = inputIcons[name];
+            const alias     = (cfg.input_aliases || {})[name] || "";
+            const hidden    = (cfg.hidden_inputs || []).includes(name);
+            const b         = brand(name);
+            let previewSrc  = "";
             if (icon) {
               try {
                 if (typeof icon === "string" && icon.startsWith("mhub_icon_")) {
@@ -568,6 +574,8 @@
             return `<div class="irow" data-src="${x(name)}" style="opacity:${hidden?0.5:1}">
               <div class="ipreview">${previewHtml}</div>
               <span class="iname" title="${x(name)}">${x(name)}</span>
+              <input type="text" class="irename" data-src="${x(name)}"
+                     value="${x(alias)}" placeholder="${x(name)}">
               <input type="file" class="ifile" accept="image/*">
               <button class="ibtn upl-btn"${hidden?" disabled":""}>Image</button>
               ${icon ? `<button class="ibtn clr clr-btn">Clear</button>` : ""}
@@ -632,6 +640,19 @@
         const fileInput = row.querySelector(".ifile");
         const uplBtn    = row.querySelector(".upl-btn");
         const clrBtn    = row.querySelector(".clr-btn");
+
+        /* Rename field — save alias on blur */
+        const renameEl = row.querySelector(".irename");
+        if (renameEl) renameEl.addEventListener("blur", () => {
+          const c = Object.assign({}, this._cfg||{});
+          const aliases = Object.assign({}, c.input_aliases||{});
+          const val = renameEl.value.trim();
+          if (val && val !== srcName) aliases[srcName] = val;
+          else delete aliases[srcName];
+          if (!Object.keys(aliases).length) delete c.input_aliases;
+          else c.input_aliases = aliases;
+          this._save(c);
+        });
 
         /* "Choose image" opens the hidden file input */
         if (uplBtn) uplBtn.addEventListener("click", () => fileInput.click());
@@ -810,6 +831,12 @@
     _zoneName(zone) {
       const aliases = this._cfg.zone_aliases || {};
       return aliases[zone.output] || zone.label || ("Output " + zone.output);
+    }
+
+    /* Return display name for an input — alias from config if set, else original MHUB name */
+    _inputName(name) {
+      if (!name) return name;
+      return (this._cfg.input_aliases || {})[name] || name;
     }
 
     _srcIcon(name, cls) {
@@ -1088,7 +1115,7 @@
         const ico = body.querySelector(".now-ico");
         const nv  = body.querySelector(".now-val");
         if (ico)  ico.outerHTML = this._nowIcon(cur||"?");
-        if (nv)   nv.textContent = cur||"—";
+        if (nv)   nv.textContent = cur ? this._inputName(cur) : "—";
         const mb = body.querySelector("#mbtn");
         if (mb) { mb.className="mb"+(muted?" muted":""); mb.innerHTML=(muted?I.voff:I.von)+" "+(muted?"Unmute":"Mute"); }
         body.querySelectorAll(".sbtn[data-src]").forEach(btn => {
@@ -1109,7 +1136,7 @@
             const act = cur && cur === name;
             return '<button class="sbtn'+(act?" on":"")+'" data-src="'+x(name)+'">'
               + this._srcIcon(name)
-              +'<span class="sname">'+x(name)+'</span>'
+              +'<span class="sname">'+x(this._inputName(name))+'</span>'
               +'</button>';
           }).join("")
         : '<div class="empty">No inputs found — check your MHUB hub is connected.</div>';
@@ -1119,7 +1146,7 @@
           + this._nowIcon(cur||"?")
           +'<div class="sp">'
             +'<div class="now-lbl">Now showing</div>'
-            +'<div class="now-val">'+(cur||"—")+'</div>'
+            +'<div class="now-val">'+(cur ? x(this._inputName(cur)) : "—")+'</div>'
           +'</div>'
           +'<div class="now-r">'
             +'<div class="now-lbl">Output</div>'
@@ -1149,7 +1176,7 @@
           });
           btn.classList.add("on");
           const sn3=btn.querySelector(".sname"); if(sn3) sn3.style.color="#3b8aff";
-          const nv2=body.querySelector(".now-val"); if(nv2) nv2.textContent=src;
+          const nv2=body.querySelector(".now-val"); if(nv2) nv2.textContent=this._inputName(src);
           const ico2=body.querySelector(".now-ico");
           if (ico2) ico2.outerHTML = this._nowIcon(src);
           this._call("media_player","select_source",{entity_id:zone.media_player,source:src});
@@ -1336,7 +1363,7 @@
   });
 
   console.info(
-    "%c MHUB-CARD %c v5.0.0 ",
+    "%c MHUB-CARD %c v5.1.0 ",
     "background:#3b8aff;color:#fff;font-weight:bold;padding:2px 4px;border-radius:4px 0 0 4px",
     "background:#0d0f14;color:#3b8aff;font-weight:bold;padding:2px 4px;border-radius:0 4px 4px 0"
   );
