@@ -93,29 +93,29 @@ Once all output media players are enabled, open or refresh your MHUB Card and yo
 
 ## 🎛️ Card Features In Detail
 
-### Switch Tab
+### Switch Tab ✅
 The main tab. Select your output zone from the dropdown at the top, then tap any input source to switch to it. The "Now showing" bar updates instantly.
 
 - Source buttons show auto-coloured brand badges (Netflix, Sky Q, PS5, Xbox, Apple TV, Spotify, Chromecast, Nvidia Shield, Blu-ray, and more)
 - Upload your own image per input to replace the auto badge
 - Mute button appears if your hub supports it
 
-### Volume Tab
+### Volume Tab ✅
 Sliders for every zone and group volume. Mute buttons per zone. Sliders update live without flickering — if you're actively dragging a slider, incoming HA state updates won't interrupt you.
 
-### Sequences Tab
+### Sequences Tab ✅
 All MHUB sequences and functions discovered from your hub appear here as buttons. Tap to run. A green flash confirms the command fired.
 
 
 ### IR / CEC Tab - UNDER CONSTRUCTION
 All IR packs and CEC commands configured in your MHUB integration appear here, grouped by device. Tap any button to send the command instantly.
 
-### Diagnostics Tab
+### Diagnostics Tab ✅
 Live read of your hub's model, firmware version, API version, input count, output count, zones discovered, and sequences found. Useful for confirming the integration is connected and pulling data correctly.
 
 ---
 
-## ✏️ Editing the Card
+## ✏️ Editing the Card ✅
 
 Click the **pencil icon** on the card to open the editor. No YAML knowledge needed.
 
@@ -125,16 +125,16 @@ Every input discovered from your hub is listed. For each one you can:
 - **Hide** — removes the input from the Switch tab entirely (useful for unused or unlabelled inputs like "Video Input 8")
 - **Show** — unhides a previously hidden input
 
-### Output aliases
+### Output aliases ✅
 Rename any output zone. Leave blank to use the name from MHUB. The alias appears in the zone dropdown and in the "Now showing" bar.
 
-### Optional overrides
+### Optional overrides ✅
 - **Card title** — override the header title (default: "MHUB")
 - **Config entry ID** — only needed if you have multiple MHUB hubs
 
 ---
 
-## ⚙️ Optional YAML config
+## ⚙️ Optional YAML config ✅
 
 The card works with zero YAML, but these overrides are available if needed:
 
