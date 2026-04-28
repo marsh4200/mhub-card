@@ -214,10 +214,10 @@ These source names are automatically detected and given brand-accurate colours a
 ### Source Switching / Controls
 ![MHUB Card Screenshot 2](images/Card2.png)
 
-### Diagnostics
+### Features
 ![MHUB Card Screenshot 3](images/Card3.png)
 
-### Features
+### Diagnostics
 ![MHUB Card Screenshot 3](images/Card4.png)
 
 
