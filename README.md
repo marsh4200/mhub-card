@@ -106,8 +106,8 @@ Sliders for every zone and group volume. Mute buttons per zone. Sliders update l
 ### Sequences Tab
 All MHUB sequences and functions discovered from your hub appear here as buttons. Tap to run. A green flash confirms the command fired.
 
-### UNDER CONSTRUCTION
-### IR / CEC Tab
+
+### IR / CEC Tab - UNDER CONSTRUCTION
 All IR packs and CEC commands configured in your MHUB integration appear here, grouped by device. Tap any button to send the command instantly.
 
 ### Diagnostics Tab
