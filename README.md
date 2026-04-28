@@ -208,8 +208,6 @@ These source names are automatically detected and given brand-accurate colours a
 
 ## 🖼️ Card Screenshots
 
-### MHUB Card Overview
-![MHUB Card Screenshot 1](images/Card.png)
 
 ### Source Switching / Controls
 ![MHUB Card Screenshot 2](images/Card2.png)
