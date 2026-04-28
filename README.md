@@ -209,7 +209,7 @@ These source names are automatically detected and given brand-accurate colours a
 ## 🖼️ Card Screenshots
 
 
-### Source Switching / Controls
+### Source Switching / Controls / Custom Icons
 ![MHUB Card Screenshot 2](images/Card2.png)
 
 ### Features
