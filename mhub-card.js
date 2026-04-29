@@ -903,13 +903,22 @@
           this._hass.callWS({ type: "config/entity_registry/list" }),
           this._hass.callWS({ type: "config/device_registry/list" }),
         ]).then(([entityEntries, deviceEntries]) => {
-          /* Classify each mhub button entity by its unique_id pattern.
-             Patterns from button.py:
-               IR:      {entry_id}_ir_{device_key}_{command_id}
-               CEC:     {entry_id}_cec_{zone_id}_{command_id}
-               source:  {entry_id}_source_button_{output_id}_{slug}
-               seq/fn:  {entry_id}_mhub_sequence_{slug} / {entry_id}_mhub_function_{slug}
-               utility: {entry_id}_mhub_identify / {entry_id}_mhub_reboot             */
+          /* Build map: device_id → { identifier, name, model } */
+          const deviceIdToInfo = {};
+          (deviceEntries || []).forEach(function(d) {
+            (d.identifiers || []).forEach(function(pair) {
+              if (pair[0] === "mhub") {
+                deviceIdToInfo[d.id] = { identifier: pair[1], name: d.name || "", model: d.model || "" };
+              }
+            });
+          });
+
+          /* Classify each mhub button by the model field on its device.
+             button.py sets model explicitly:
+               IR buttons  → "MHUB Display IR" or "MHUB Source IR"
+               CEC buttons → "MHUB CEC"
+               source btns → "MHUB Zone"
+               sequences   → hub device (no model suffix, or main hub model)  */
           const seqEids  = new Set();
           const irEids   = new Set();
           const cecEids  = new Set();
@@ -918,30 +927,25 @@
           (entityEntries || []).filter(function(e){ return e.platform === "mhub"; }).forEach(function(e) {
             mhubEids.add(e.entity_id);
             if (e.domain !== "button") return;
-            const uid = e.unique_id || "";
-            if (uid.includes("_ir_")) {
+            const info  = deviceIdToInfo[e.device_id] || {};
+            const model = info.model || "";
+            if (model === "MHUB Display IR" || model === "MHUB Source IR") {
               irEids.add(e.entity_id);
-            } else if (uid.includes("_cec_")) {
+            } else if (model === "MHUB CEC") {
               cecEids.add(e.entity_id);
-            } else if (uid.includes("_source_button_") || uid.includes("_mhub_identify") || uid.includes("_mhub_reboot")) {
-              /* skip — source switcher buttons and utility buttons, not shown in IR tab */
+            } else if (model === "MHUB Zone") {
+              /* source switcher buttons — skip */
             } else {
               seqEids.add(e.entity_id);
             }
           }.bind(this));
 
           /* Build map: entity_id → device name (for IR grouping labels) */
-          const deviceIdToName = {};
-          (deviceEntries || []).forEach(function(d) {
-            if (d.name) deviceIdToName[d.id] = d.name;
-          });
-
-          /* Build map: entity_id → device name */
+          /* Build map: entity_id → device name (for IR grouping labels) */
           const entityDeviceNames = {};
           (entityEntries || []).filter(function(e){ return e.platform === "mhub"; }).forEach(function(e) {
-            if (e.device_id && deviceIdToName[e.device_id]) {
-              entityDeviceNames[e.entity_id] = deviceIdToName[e.device_id];
-            }
+            const info = deviceIdToInfo[e.device_id];
+            if (info && info.name) entityDeviceNames[e.entity_id] = info.name;
           });
 
           this._mhubEntityIds   = mhubEids;
