@@ -1301,11 +1301,11 @@
       const irs  = this._disc?.ir_devices ||[];
       const cecs = this._disc?.cec_devices||[];
 
-      /* Only skip rebuild if we already have real content rendered.
-         If body only contains the empty-state message, allow a re-render
-         so that async registry data can populate the IR buttons. */
-      if (body.children.length && body.querySelector(".irdev")) return;
-      if (!irs.length&&!cecs.length) { body.innerHTML=`<div class="empty">No IR or CEC devices found.<br>Configure IR packs in the MHUB integration options.</div>`; return; }
+      /* Only skip rebuild if we already have real IR buttons rendered.
+         Do NOT bail if body only has the empty-state div — the async
+         registry fetch may not have completed yet when we first render. */
+      if (body.querySelector(".irdev")) return;
+      if (!irs.length&&!cecs.length) { body.innerHTML=`<div class="empty">No IR or CEC devices found.<br>Make sure IR packs are assigned to ports in the MHUB app, then reload the integration.</div>`; return; }
       const block=(devs,lbl)=>{
         let h=`<div class="slbl">${lbl}</div>`;
         devs.forEach(d=>{
