@@ -903,15 +903,13 @@
           this._hass.callWS({ type: "config/entity_registry/list" }),
           this._hass.callWS({ type: "config/device_registry/list" }),
         ]).then(([entityEntries, deviceEntries]) => {
-          /* Build map: device_id → identifier string */
-          const deviceIdToIdentifier = {};
-          (deviceEntries || []).forEach(function(d) {
-            (d.identifiers || []).forEach(function(pair) {
-              if (pair[0] === "mhub") deviceIdToIdentifier[d.id] = pair[1];
-            });
-          });
-
-          /* Classify each mhub button entity by its device's identifier */
+          /* Classify each mhub button entity by its unique_id pattern.
+             Patterns from button.py:
+               IR:      {entry_id}_ir_{device_key}_{command_id}
+               CEC:     {entry_id}_cec_{zone_id}_{command_id}
+               source:  {entry_id}_source_button_{output_id}_{slug}
+               seq/fn:  {entry_id}_mhub_sequence_{slug} / {entry_id}_mhub_function_{slug}
+               utility: {entry_id}_mhub_identify / {entry_id}_mhub_reboot             */
           const seqEids  = new Set();
           const irEids   = new Set();
           const cecEids  = new Set();
@@ -920,19 +918,14 @@
           (entityEntries || []).filter(function(e){ return e.platform === "mhub"; }).forEach(function(e) {
             mhubEids.add(e.entity_id);
             if (e.domain !== "button") return;
-
-            const devIdentifier = deviceIdToIdentifier[e.device_id] || "";
-
-            /* IR device identifiers contain _display_ or _source_ (from _build_ir_buttons) */
-            if (devIdentifier.includes("_display_") || devIdentifier.includes("_source_")) {
+            const uid = e.unique_id || "";
+            if (uid.includes("_ir_")) {
               irEids.add(e.entity_id);
-            }
-            /* CEC device identifiers contain _cec_ */
-            else if (devIdentifier.includes("_cec_")) {
+            } else if (uid.includes("_cec_")) {
               cecEids.add(e.entity_id);
-            }
-            /* Hub device identifier = entry_id exactly (no suffix) → sequences + utility buttons */
-            else {
+            } else if (uid.includes("_source_button_") || uid.includes("_mhub_identify") || uid.includes("_mhub_reboot")) {
+              /* skip — source switcher buttons and utility buttons, not shown in IR tab */
+            } else {
               seqEids.add(e.entity_id);
             }
           }.bind(this));
