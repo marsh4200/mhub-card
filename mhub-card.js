@@ -931,7 +931,8 @@
 
           (entityEntries || []).filter(function(e){ return e.platform === "mhub"; }).forEach(function(e) {
             mhubEids.add(e.entity_id);
-            if (e.domain !== "button") return;
+            const domain = e.entity_id.split(".")[0];
+            if (domain !== "button") return;
             const info  = deviceIdToInfo[e.device_id] || {};
             const model = info.model || "";
             if (model === "MHUB Display IR" || model === "MHUB Source IR") {
