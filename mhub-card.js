@@ -1308,6 +1308,20 @@
          Do NOT bail if body only has the empty-state div — the async
          registry fetch may not have completed yet when we first render. */
       if (body.querySelector(".irdev")) return;
+
+      /* ── TEMP DIAGNOSTIC — remove after fix confirmed ── */
+      const reg = this._mhubRegistry || {};
+      const irCount = reg.irEids ? reg.irEids.size : "no registry";
+      body.innerHTML = `<div style="background:red;color:white;padding:8px;font-size:12px">
+        IR tab diagnostic:<br>
+        ir_devices (disc): ${irs.length}<br>
+        irEids (registry): ${irCount}<br>
+        mhubEntityIds: ${this._mhubEntityIds ? this._mhubEntityIds.size : "none"}<br>
+        disc exists: ${!!this._disc}<br>
+        registry exists: ${!!this._mhubRegistry}
+      </div>`;
+      if (!irs.length && !cecs.length) return;
+      /* ── END DIAGNOSTIC ── */
       if (!irs.length&&!cecs.length) { body.innerHTML=`<div class="empty">No IR or CEC devices found.<br>Make sure IR packs are assigned to ports in the MHUB app, then reload the integration.</div>`; return; }
       const block=(devs,lbl)=>{
         let h=`<div class="slbl">${lbl}</div>`;
