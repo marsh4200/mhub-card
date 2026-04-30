@@ -307,16 +307,21 @@
     let seqButtons = [], irButtons = [], cecButtons = [];
 
     if (mhubRegistry && mhubRegistry.seqEids) {
-      /* Reliable path — pre-classified by device registry identifiers */
+      /* Reliable path — pre-classified by device model from device registry.
+         IMPORTANT: button entities that have never been pressed do NOT appear
+         in hass.states. We must use the registry entity IDs directly and
+         build stub objects for any that are missing from hass.states. */
       const { seqEids, irEids, cecEids } = mhubRegistry;
 
-      seqButtons = allButtons.filter(function(s) {
-        if (!seqEids.has(s.entity_id)) return false;
-        /* Exclude utility buttons */
-        return !s.entity_id.match(/mhub_identify|mhub_reboot/);
-      });
-      irButtons  = allButtons.filter(function(s){ return irEids.has(s.entity_id); });
-      cecButtons = allButtons.filter(function(s){ return cecEids.has(s.entity_id); });
+      const stateOrStub = function(eid) {
+        return hass.states[eid] || { entity_id: eid, state: "unknown", attributes: {} };
+      };
+
+      seqButtons = [...seqEids]
+        .filter(function(eid){ return !eid.match(/mhub_identify|mhub_reboot/); })
+        .map(stateOrStub);
+      irButtons  = [...irEids].map(stateOrStub);
+      cecButtons = [...cecEids].map(stateOrStub);
 
     } else if (mhubEntityIds && mhubEntityIds.size > 0) {
       /* Partial fallback — we have entity IDs but not unique_ids.
