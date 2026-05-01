@@ -1,14 +1,17 @@
 # 📺 MHUB Card for Home Assistant
+---
+
+> ⚠️ **This card only works with the HDANYWHERE MHUB custom integration for Home Assistant.**
+> It will not work with any other integration. No MHUB integration = no card.
+
+---
 
 [![Add to HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=marsh4200&repository=mhub-card&category=plugin)
 
 > **A fully self-configuring Lovelace card for the [HDANYWHERE MHUB](https://www.hdanywhere.com/) matrix switcher integration.**
 > Zero YAML. Zero manual entity entry. Just install and go.
 
----
 
-> ⚠️ **This card only works with the HDANYWHERE MHUB custom integration for Home Assistant.**
-> It will not work with any other integration. No MHUB integration = no card.
 
 ---
 
