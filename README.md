@@ -25,7 +25,7 @@
 | 👁️ **Hide unused inputs** | Blank inputs can be hidden from the card entirely |
 | 🔊 **Volume control** | Per-zone and group volume sliders with mute toggle |
 | ▶️ **Sequences & Functions** | Run MHUB sequences and functions directly from the card |
-| 📡(UNDER CONSTRUCTION) **IR / CEC control** | Fire IR and CEC commands from your configured IR packs | (UNDER CONSTRUCTION)
+| 📡 **IR / CEC control** | Fire IR and CEC commands from your configured IR packs | (UNDER CONSTRUCTION)
 | 🏷️ **Output aliases** | Rename outputs (e.g. "Output B" → "Main Bedroom") |
 | 📋 **Diagnostics** | Live hub model, firmware, API version, input/output count |
 | ⚡ **Optimistic UI** | Source switches update instantly without waiting for HA poll |
