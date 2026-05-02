@@ -918,29 +918,37 @@
             });
           });
 
-          /* Classify each mhub button by the model field on its device.
-             button.py sets model explicitly:
-               IR buttons  → "MHUB Display IR" or "MHUB Source IR"
-               CEC buttons → "MHUB CEC"
-               source btns → "MHUB Zone"
-               sequences   → hub device (no model suffix, or main hub model)  */
+          /* Classify each mhub button by the device name.
+             button.py sets device_name explicitly:
+               IR source  → "Source - {pack_name}"
+               IR display → "{zone} (Output X) - {pack_name}" or "Display - {pack_name}"
+               CEC        → "CEC - {zone_label}"
+               zone btns  → zone_label only (no prefix)
+             So: name starts with "Source - " or contains " - " and has no zone-only match → IR */
           const seqEids  = new Set();
           const irEids   = new Set();
           const cecEids  = new Set();
           const mhubEids = new Set();
+
+          /* Build set of pure zone labels for exclusion */
+          const zoneNames = new Set(
+            (deviceEntries || [])
+              .filter(function(d){ return (d.identifiers||[]).some(function(p){ return p[0]==="mhub"; }); })
+              .map(function(d){ return (d.name||"").toLowerCase(); })
+          );
 
           (entityEntries || []).filter(function(e){ return e.platform === "mhub"; }).forEach(function(e) {
             mhubEids.add(e.entity_id);
             const domain = e.entity_id.split(".")[0];
             if (domain !== "button") return;
             const info  = deviceIdToInfo[e.device_id] || {};
-            const model = info.model || "";
-            if (model === "MHUB Display IR" || model === "MHUB Source IR") {
+            const model = (info.model || "").toLowerCase();
+            const name  = (info.name  || "").toLowerCase();
+            if (model === "mhub source ir" || model === "mhub display ir" ||
+                name.startsWith("source - ") || name.includes(" - ") && !name.startsWith("cec")) {
               irEids.add(e.entity_id);
-            } else if (model === "MHUB CEC") {
+            } else if (model === "mhub cec" || name.startsWith("cec - ")) {
               cecEids.add(e.entity_id);
-            } else if (model === "MHUB Zone") {
-              /* source switcher buttons — skip */
             } else {
               seqEids.add(e.entity_id);
             }
