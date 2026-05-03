@@ -1,5 +1,5 @@
 /**
- * mhub-card.js — v5.3.0
+ * mhub-card.js — v5.4.0
  * Self-configuring Lovelace card for the MHUB integration.
  *
  * Zero manual setup. The card reads your HA entity registry,
@@ -176,11 +176,35 @@
     .seqb.fired { border-color:#22d47a!important; color:#22d47a; }
     .seqb.fired svg { fill:#22d47a; }
 
-    /* IR/CEC */
-    .irdev { margin-bottom:14px; }
-    .irdname { font-size:10px; color:#6a7490; font-weight:600; letter-spacing:.06em; text-transform:uppercase; margin-bottom:7px; }
-    .irg { display:flex; flex-wrap:wrap; gap:5px; }
-    .irb { padding:5px 12px; border-radius:6px; border:1px solid rgba(255,255,255,.09); background:#08090d; color:#6a7490; font-size:12px; cursor:pointer; font-family:inherit; }
+    /* IR/CEC — each device is a collapsible card */
+    .irdev { margin-bottom:8px; border:1px solid rgba(255,255,255,.09); border-radius:10px; background:#08090d; overflow:hidden; }
+    .irdev[open] { border-color:rgba(255,255,255,.18); }
+    .irdsum {
+      list-style:none; cursor:pointer; padding:11px 13px;
+      display:flex; align-items:center; gap:9px;
+      font-size:13px; color:#e8eeff; font-weight:500;
+      user-select:none;
+    }
+    .irdsum::-webkit-details-marker { display:none; }
+    .irdsum::marker { display:none; content:""; }
+    .irdsum:hover { background:#161922; }
+    .irdchev {
+      width:14px; height:14px; flex-shrink:0;
+      transition:transform .15s ease;
+      fill:#6a7490;
+    }
+    .irdev[open] .irdchev { transform:rotate(90deg); fill:#3b8aff; }
+    .irdtitle { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .irdcount {
+      font-size:10px; color:#6a7490; background:#0d1019;
+      border:1px solid rgba(255,255,255,.09);
+      padding:2px 8px; border-radius:20px; flex-shrink:0;
+      font-weight:600;
+    }
+    .irdev[open] .irdcount { color:#3b8aff; border-color:#1d3a6e; background:#0d1e3a; }
+    .irdbody { padding:4px 13px 12px; border-top:1px solid rgba(255,255,255,.06); }
+    .irg { display:flex; flex-wrap:wrap; gap:5px; padding-top:10px; }
+    .irb { padding:5px 12px; border-radius:6px; border:1px solid rgba(255,255,255,.09); background:#0d1019; color:#6a7490; font-size:12px; cursor:pointer; font-family:inherit; }
     .irb:hover { border-color:rgba(255,255,255,.22); color:#e8eeff; background:#161922; }
     .irb:active { transform:scale(.96); }
     .irb.fired { border-color:#3b8aff; color:#3b8aff; background:#0d1e3a; }
@@ -1394,12 +1418,22 @@
       if (!irs.length && !cecs.length) return;
       /* ── END DIAGNOSTIC ── */
       if (!irs.length&&!cecs.length) { body.innerHTML=`<div class="empty">No IR or CEC devices found.<br>Make sure IR packs are assigned to ports in the MHUB app, then reload the integration.</div>`; return; }
+
+      /* Track which device sections are expanded so re-renders preserve state. */
+      if (!this._irOpen) this._irOpen = new Set();
+
+      const chev = `<svg class="irdchev" viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg>`;
       const block=(devs,lbl)=>{
         let h=`<div class="slbl">${lbl}</div>`;
         devs.forEach(d=>{
-          h+=`<div class="irdev"><div class="irdname">${x(d.name)}</div><div class="irg">`;
+          const key   = lbl + "::" + d.name;
+          const open  = this._irOpen.has(key) ? " open" : "";
+          const count = (d.commands||[]).length;
+          h+=`<details class="irdev"${open} data-irkey="${x(key)}">`
+            +  `<summary class="irdsum">${chev}<span class="irdtitle">${x(d.name)}</span><span class="irdcount">${count}</span></summary>`
+            +  `<div class="irdbody"><div class="irg">`;
           (d.commands||[]).forEach(c=>{h+=`<button class="irb" data-eid="${x(c.entity)}">${x(c.name)}</button>`;});
-          h+=`</div></div>`;
+          h+=`</div></div></details>`;
         });
         return h;
       };
@@ -1407,6 +1441,17 @@
       if (irs.length)  html+=block(irs,"IR commands");
       if (cecs.length) { if(irs.length)html+=`<div class="div"></div>`; html+=block(cecs,"CEC commands"); }
       body.innerHTML=html;
+
+      /* Persist open/closed state across re-renders */
+      body.querySelectorAll("details.irdev").forEach(det=>{
+        det.addEventListener("toggle",()=>{
+          const k = det.dataset.irkey;
+          if (!k) return;
+          if (det.open) this._irOpen.add(k);
+          else          this._irOpen.delete(k);
+        });
+      });
+
       body.querySelectorAll(".irb").forEach(btn=>btn.addEventListener("click",()=>{
         if(btn.dataset.eid) this._call("button","press",{entity_id:btn.dataset.eid});
         btn.classList.add("fired"); setTimeout(()=>btn.classList.remove("fired"),700);
@@ -1467,7 +1512,7 @@
   });
 
   console.info(
-    "%c MHUB-CARD %c v5.3.0 ",
+    "%c MHUB-CARD %c v5.4.0 ",
     "background:#3b8aff;color:#fff;font-weight:bold;padding:2px 4px;border-radius:4px 0 0 4px",
     "background:#0d0f14;color:#3b8aff;font-weight:bold;padding:2px 4px;border-radius:0 4px 4px 0"
   );
