@@ -1,5 +1,5 @@
 /**
- * mhub-card.js — v5.2.0
+ * mhub-card.js — v5.3.0
  * Self-configuring Lovelace card for the MHUB integration.
  *
  * Zero manual setup. The card reads your HA entity registry,
@@ -589,20 +589,27 @@
           }).join("")}
           ` : ""}
 
-          <div class="sec">Optional overrides</div>
           ${found && disc.zones.length ? `
+          <div class="sec">Outputs — names &amp; visibility</div>
           <p style="font-size:12px;color:var(--secondary-text-color,#888);margin-bottom:10px;line-height:1.5">
-            Rename outputs. Leave blank to use the name from MHUB.
+            Rename outputs (leave blank to use the name from MHUB), or hide outputs so they don't appear in the zone dropdown — useful for restricting which TVs a room can switch.
           </p>
           ${disc.zones.map(z => {
             const alias = (cfg.zone_aliases||{})[z.output] || "";
-            return `<div class="field">
-              <label>Output ${x(z.output)} · ${x(z.label)} — alias</label>
-              <input type="text" class="zone-alias" data-output="${x(z.output)}"
-                     value="${x(alias)}" placeholder="${x(z.label)}">
+            const zHidden = (cfg.hidden_zones || []).includes(z.output);
+            return `<div class="field" data-zone-output="${x(z.output)}" style="opacity:${zHidden?0.55:1}">
+              <label>Output ${x(z.output)} · ${x(z.label)}${zHidden?" — hidden":""}</label>
+              <div style="display:flex;gap:6px;align-items:center">
+                <input type="text" class="zone-alias" data-output="${x(z.output)}"
+                       value="${x(alias)}" placeholder="${x(z.label)}" style="flex:1">
+                <button class="ibtn zone-hide-btn" data-output="${x(z.output)}"
+                        style="${zHidden?"color:#3b8aff;border-color:#3b8aff":""}">${zHidden?"Show":"Hide"}</button>
+              </div>
             </div>`;
           }).join("")}
           ` : ""}
+
+          <div class="sec">Optional overrides</div>
           <div class="field">
             <label>Card title (leave blank for auto)</label>
             <input type="text" id="ov-title" value="${(cfg.title||"")}" placeholder="Auto-detected from your hub">
@@ -624,6 +631,22 @@
           if (!Object.keys(aliases).length) delete c.zone_aliases;
           else c.zone_aliases = aliases;
           this._save(c);
+        });
+      });
+
+      /* ── Zone hide/show listeners ── */
+      this.querySelectorAll(".zone-hide-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const c = Object.assign({}, this._cfg||{});
+          const output = btn.dataset.output;
+          const hidden = (c.hidden_zones || []).slice();
+          const idx = hidden.indexOf(output);
+          if (idx === -1) hidden.push(output);
+          else hidden.splice(idx, 1);
+          if (hidden.length) c.hidden_zones = hidden;
+          else delete c.hidden_zones;
+          this._save(c);
+          this._render();
         });
       });
 
@@ -994,6 +1017,7 @@
       return new Promise((resolve) => {
         this._disc  = discoverMhub(this._hass, this._cfg.entry_id, mhubEntityIds, this._mhubRegistry || null, this._deviceNames || {});
         this._zone  = 0;
+        this._zoneRestored = false;   /* allow localStorage restore on next _sw() */
         const sh    = this._sh;
         sh.innerHTML= "";
         const style = document.createElement("style");
@@ -1111,21 +1135,60 @@
         if (body) body.innerHTML = '<div class="empty">No MHUB output zones found.<br>Check the MHUB integration is connected.</div>';
         return;
       }
-      const zone = d.zones[this._zone] || d.zones[0];
 
-      /* Zone dropdown — rebuild options only when zone count changes */
+      /* Filter out zones the user has hidden in the editor.
+         If every zone is hidden we fall back to showing all of them so
+         the card never ends up empty due to misconfiguration. */
+      const hiddenZones = new Set(this._cfg.hidden_zones || []);
+      let visibleZones = d.zones.filter(z => !hiddenZones.has(z.output));
+      if (!visibleZones.length) visibleZones = d.zones;
+      /* Stash on the instance so the dropdown change handler (bound once)
+         can always read the current list. */
+      this._visibleZones = visibleZones;
+
+      /* On first render, restore the last selected zone from localStorage
+         (keyed per entry_id so multi-hub setups don't collide). */
+      if (!this._zoneRestored) {
+        this._zoneRestored = true;
+        try {
+          const key = "mhub_card_last_zone_" + (this._cfg.entry_id || "default");
+          const savedOutput = localStorage.getItem(key);
+          if (savedOutput) {
+            const idx = visibleZones.findIndex(z => z.output === savedOutput);
+            if (idx >= 0) this._zone = idx;
+          }
+        } catch(_) {}
+      }
+
+      /* Clamp the selected zone index to the visible list */
+      if (this._zone >= visibleZones.length || this._zone < 0) this._zone = 0;
+      const zone = visibleZones[this._zone] || visibleZones[0];
+
+      /* Zone dropdown — rebuild options when the visible-zone set changes
+         (count or order), e.g. when the user toggles hide in the editor. */
       const drop = this._el("zdrop");
       if (drop) {
-        if (drop.options.length !== d.zones.length) {
-          drop.innerHTML = d.zones.map((z,i) => {
+        const sig = visibleZones.map(z => z.output).join("|");
+        if (drop.dataset.sig !== sig) {
+          drop.dataset.sig = sig;
+          drop.innerHTML = visibleZones.map((z,i) => {
             const label = this._zoneName(z);
             return `<option value="${i}">Output ${x(z.output||String.fromCharCode(65+i))} · ${x(label)}</option>`;
           }).join("");
-          drop.addEventListener("change", () => {
-            this._zone = parseInt(drop.value);
-            const swBody = this._el("swb"); if (swBody) swBody.innerHTML = "";
-            this._sw();
-          });
+          if (!drop._mhubBound) {
+            drop._mhubBound = true;
+            drop.addEventListener("change", () => {
+              this._zone = parseInt(drop.value);
+              /* Persist the chosen zone so a page refresh keeps it selected. */
+              try {
+                const key = "mhub_card_last_zone_" + (this._cfg.entry_id || "default");
+                const z = (this._visibleZones || [])[this._zone];
+                if (z) localStorage.setItem(key, z.output);
+              } catch(_) {}
+              const swBody = this._el("swb"); if (swBody) swBody.innerHTML = "";
+              this._sw();
+            });
+          }
         }
         drop.value = String(this._zone);
       }
@@ -1404,7 +1467,7 @@
   });
 
   console.info(
-    "%c MHUB-CARD %c v5.2.0 ",
+    "%c MHUB-CARD %c v5.3.0 ",
     "background:#3b8aff;color:#fff;font-weight:bold;padding:2px 4px;border-radius:4px 0 0 4px",
     "background:#0d0f14;color:#3b8aff;font-weight:bold;padding:2px 4px;border-radius:0 4px 4px 0"
   );
