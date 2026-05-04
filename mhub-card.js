@@ -1,5 +1,5 @@
 /**
- * mhub-card.js — v5.4.0
+ * mhub-card.js — v5.4.1
  * Self-configuring Lovelace card for the MHUB integration.
  *
  * Zero manual setup. The card reads your HA entity registry,
@@ -20,6 +20,49 @@
 
 (function () {
   "use strict";
+
+  const VERSION = "5.4.1";
+
+  /* ─── utilities ─────────────────────────────────────────── */
+  function x(s) {
+    return String(s == null ? "" : s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  /* Whitelist for icon URLs we'll render in <img src="…">.
+     Blocks javascript:, vbscript:, file:, http(s):// to a third party, etc.
+     Anything not matching is treated as no-icon. */
+  const SAFE_ICON_RE = /^(\/api\/image\/serve\/|\/local\/|data:image\/)/;
+  function safeIconUrl(u) {
+    if (typeof u !== "string") return null;
+    return SAFE_ICON_RE.test(u) ? u : null;
+  }
+
+  /* Extract the actual image URL from whatever format is stored in config.
+     New format:  /api/image/serve/{id}/512x512  (HA Image API — server-side, all devices)
+     Legacy:      mhub_icon_* localStorage token, plain data URL, /local/ path
+     Returns a URL only if it passes safeIconUrl(). */
+  function extractIconUrl(raw) {
+    if (!raw) return null;
+    let candidate = null;
+    if (typeof raw === "object" && raw.dataUrl) candidate = raw.dataUrl;
+    else if (typeof raw === "string") {
+      if (raw.startsWith("/api/image/serve/") || raw.startsWith("/local/") || raw.startsWith("data:")) {
+        candidate = raw;
+      } else if (raw.startsWith("mhub_icon_")) {
+        try { candidate = localStorage.getItem(raw) || null; } catch (_) { candidate = null; }
+      } else if (raw.startsWith("{")) {
+        try { candidate = JSON.parse(raw).dataUrl || null; } catch (_) {}
+      } else {
+        const stripped = raw.split("#mhub-")[0];
+        if (stripped) candidate = stripped;
+      }
+    }
+    return safeIconUrl(candidate);
+  }
 
   /* ─── brand colours ─────────────────────────────────────── */
   const BRANDS = {
@@ -445,7 +488,12 @@
   ═══════════════════════════════════════════════════════════ */
   class MhubCardEditor extends HTMLElement {
     setConfig(cfg) { this._cfg = cfg || {}; this._render(); }
-    set hass(h)    { this._hass = h; this._render(); }
+    set hass(h) {
+      const first = !this._hass;
+      this._hass = h;
+      if (first) this._fetchRegistry();
+      this._render();
+    }
 
     /* Fire config-changed so HA saves the updated YAML */
     _save(cfg) {
@@ -453,50 +501,58 @@
       this.dispatchEvent(new CustomEvent("config-changed", { detail:{ config: cfg }, bubbles:true, composed:true }));
     }
 
-    /* Upload a file to /local/mhub-icons/ via HA upload API, return the URL */
-    async _upload(file) {
-      const fd = new FormData();
-      fd.append("file", file);
-      const resp = await fetch("/api/hassio/homeassistant/api/file_upload", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${this._hass.auth.data.access_token}` },
-        body: fd,
-      }).catch(() => null);
+    /* Fetch entity + device registry so the editor can show accurate
+       sequence/IR/CEC counts and so discoverMhub() returns the same
+       data the main card sees. Without this the editor's sequence
+       and IR counts always read 0 because button entities that have
+       never been pressed don't appear in hass.states.
 
-      /* HA doesn't have a generic file-upload endpoint — use the /local/ static folder
-         instead by uploading via the config/core/file_upload websocket approach.
-         Simplest reliable method: convert to object URL stored in config as /local/ path.
-         We actually POST to the HA file-upload endpoint properly: */
-      const ext   = file.name.split(".").pop().toLowerCase();
-      const slug  = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").toLowerCase();
-      const token = this._hass.auth.data.access_token;
-
-      /* Use the /api/config/config_entries/... no — use the static /local/ upload.
-         HA exposes POST /api/hassio/host/... no.
-         The correct approach for uploading to /local/ is the hassio ingress or
-         the config flow file step. Since neither is reliable here, we fall back to
-         reading as data-URL and letting the user know to save manually if needed.
-         ACTUALLY — HA 2023.9+ exposes POST /api/image/upload for image entities,
-         but the canonical way to write to /local/ is via the File Editor or SSH.
-         We'll use a known-working approach: the HA REST API file upload at
-         /api/hassio/homeassistant/api/file_upload isn't standard.
-
-         Best portable approach that works without add-ons:
-         Read the file as a data URL (base64) and store it.
-         BUT user asked for /local/ — so we'll attempt fetch upload and
-         fall back to base64 if it fails, flagging clearly. */
-
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          /* Store as data URL — universally works, stored in card YAML config.
-             We'll attempt to also write to /local/mhub-icons/ but that requires
-             the file editor API or SSH. For now, data-URL is the reliable path. */
-          resolve({ dataUrl: reader.result, slug });
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+       Retried with exponential backoff if the WS call fails. */
+    _fetchRegistry(attempt) {
+      attempt = attempt || 1;
+      if (!this._hass || this._regPending) return;
+      this._regPending = true;
+      Promise.all([
+        this._hass.callWS({ type: "config/entity_registry/list" }),
+        this._hass.callWS({ type: "config/device_registry/list" }),
+      ]).then(([entityEntries, deviceEntries]) => {
+        const deviceIdToInfo = {};
+        (deviceEntries || []).forEach(d => {
+          (d.identifiers || []).forEach(p => {
+            if (p[0] === "mhub") {
+              deviceIdToInfo[d.id] = { name: d.name || "", model: d.model || "" };
+            }
+          });
+        });
+        const seqEids = new Set(), irEids = new Set(), cecEids = new Set(), mhubEids = new Set();
+        const entityDeviceNames = {};
+        (entityEntries || []).filter(e => e.platform === "mhub").forEach(e => {
+          mhubEids.add(e.entity_id);
+          const info = deviceIdToInfo[e.device_id] || {};
+          if (info.name) entityDeviceNames[e.entity_id] = info.name;
+          if (e.entity_id.split(".")[0] !== "button") return;
+          const model = (info.model || "").toLowerCase();
+          const name  = (info.name  || "").toLowerCase();
+          const isIR  = model === "mhub source ir"
+                     || model === "mhub display ir"
+                     || name.startsWith("source - ")
+                     || (name.includes(" - ") && !name.startsWith("cec - "));
+          const isCEC = model === "mhub cec" || name.startsWith("cec - ");
+          if (isIR)       irEids.add(e.entity_id);
+          else if (isCEC) cecEids.add(e.entity_id);
+          else            seqEids.add(e.entity_id);
+        });
+        this._mhubEntityIds = mhubEids;
+        this._mhubRegistry  = { seqEids, irEids, cecEids };
+        this._deviceNames   = entityDeviceNames;
+        this._render();
+      }).catch(() => {
+        /* Retry up to 5 times with exponential backoff */
+        if (attempt < 5) {
+          const delay = Math.min(2000 * Math.pow(2, attempt - 1), 30000);
+          setTimeout(() => { if (this._hass) this._fetchRegistry(attempt + 1); }, delay);
+        }
+      }).finally(() => { this._regPending = false; });
     }
 
     _render() {
@@ -505,7 +561,9 @@
       if (this.querySelector("input:focus, select:focus, textarea:focus")) return;
 
       const cfg   = this._cfg || {};
-      const disc  = this._hass ? discoverMhub(this._hass, cfg.entry_id) : null;
+      const disc  = this._hass
+        ? discoverMhub(this._hass, cfg.entry_id, this._mhubEntityIds, this._mhubRegistry, this._deviceNames || {})
+        : null;
       const found = disc && disc.found;
 
       /* Collect all unique source names across all zones */
@@ -585,18 +643,7 @@
             const alias     = (cfg.input_aliases || {})[name] || "";
             const hidden    = (cfg.hidden_inputs || []).includes(name);
             const b         = brand(name);
-            let previewSrc  = "";
-            if (icon && typeof icon === "string") {
-              if (icon.startsWith("/api/image/serve/") || icon.startsWith("/local/") || icon.startsWith("data:")) {
-                previewSrc = icon;
-              } else if (icon.startsWith("mhub_icon_")) {
-                try { previewSrc = localStorage.getItem(icon) || ""; } catch(_) {}
-              } else if (icon.startsWith("{")) {
-                try { previewSrc = JSON.parse(icon).dataUrl || ""; } catch(_) {}
-              } else {
-                previewSrc = icon.split("#mhub-")[0];
-              }
-            }
+            const previewSrc = extractIconUrl(icon);
             const previewHtml = previewSrc
               ? `<img src="${x(previewSrc)}" alt="">`
               : `<span style="background:${b.bg};color:${b.fg};width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:7px;opacity:${hidden?0.35:1}">${x(b.t)}</span>`;
@@ -868,32 +915,9 @@
        If a custom image is configured, renders an <img>.
        Otherwise falls back to the colour badge. */
     /* Extract the actual image URL from whatever format is stored in config.
-       New format:  /api/image/serve/{id}/512x512  (HA Image API — server-side, all devices)
-       Legacy:      mhub_icon_* localStorage token, plain data URL, /local/ path */
-    _extractUrl(raw) {
-      if (!raw) return null;
-      if (typeof raw === "object" && raw.dataUrl) return raw.dataUrl;
-      if (typeof raw === "string") {
-        /* New format: HA Image API URL — just use it directly */
-        if (raw.startsWith("/api/image/serve/")) return raw;
-        /* /local/ path */
-        if (raw.startsWith("/local/")) return raw;
-        /* data URL */
-        if (raw.startsWith("data:")) return raw;
-        /* Legacy localStorage token */
-        if (raw.startsWith("mhub_icon_")) {
-          try { return localStorage.getItem(raw) || null; } catch(_) { return null; }
-        }
-        /* Legacy JSON wrapper */
-        if (raw.startsWith("{")) {
-          try { const p = JSON.parse(raw); return p.dataUrl || null; } catch(_) {}
-        }
-        /* Legacy fragment format */
-        const stripped = raw.split("#mhub-")[0];
-        if (stripped) return stripped;
-      }
-      return null;
-    }
+       Delegates to the module-level helper so the editor and main card
+       resolve URLs identically and apply the same scheme whitelist. */
+    _extractUrl(raw) { return extractIconUrl(raw); }
 
     /* Return display name for a zone — alias from config if set, else MHUB label */
     _zoneName(zone) {
@@ -991,17 +1015,16 @@
             const info  = deviceIdToInfo[e.device_id] || {};
             const model = (info.model || "").toLowerCase();
             const name  = (info.name  || "").toLowerCase();
-            if (model === "mhub source ir" || model === "mhub display ir" ||
-                name.startsWith("source - ") || name.includes(" - ") && !name.startsWith("cec")) {
-              irEids.add(e.entity_id);
-            } else if (model === "mhub cec" || name.startsWith("cec - ")) {
-              cecEids.add(e.entity_id);
-            } else {
-              seqEids.add(e.entity_id);
-            }
-          }.bind(this));
+            const isIR  = model === "mhub source ir"
+                       || model === "mhub display ir"
+                       || name.startsWith("source - ")
+                       || (name.includes(" - ") && !name.startsWith("cec - "));
+            const isCEC = model === "mhub cec" || name.startsWith("cec - ");
+            if (isIR)       irEids.add(e.entity_id);
+            else if (isCEC) cecEids.add(e.entity_id);
+            else            seqEids.add(e.entity_id);
+          });
 
-          /* Build map: entity_id → device name (for IR grouping labels) */
           /* Build map: entity_id → device name (for IR grouping labels) */
           const entityDeviceNames = {};
           (entityEntries || []).filter(function(e){ return e.platform === "mhub"; }).forEach(function(e) {
@@ -1120,7 +1143,7 @@
       const sub = this._el("hsub");
       if (sub && d) {
         /* Read live from status sensor attributes if available, fall back to discovery cache */
-        const statusState = d.status ? (this._hass?.states[d.status] || null) : null;
+        const statusState = d.status ? (this._hass?.states?.[d.status] || null) : null;
         const attrs = statusState ? (statusState.attributes || {}) : (d._diagAttrs || {});
         const m = attrs.model || "", f = attrs.firmware || "";
         const ins = attrs.inputs != null ? String(attrs.inputs) : "";
@@ -1453,7 +1476,7 @@
 
       /* MHUBStatusSensor puts all diagnostic_attrs() into extra_state_attributes.
          Re-read live from hass.states so firmware/model updates propagate. */
-      const statusState = d?.status ? (this._hass?.states[d?.status] || null) : null;
+      const statusState = d?.status ? (this._hass?.states?.[d.status] || null) : null;
       const attrs = statusState ? (statusState.attributes || {}) : (d?._diagAttrs || {});
 
       const isOn = !d?.power_switch || this._sv(d.power_switch,"on")==="on";
@@ -1463,7 +1486,7 @@
       const ins  = attrs.inputs  != null ? String(attrs.inputs)  : "—";
       const outs = attrs.outputs != null ? String(attrs.outputs) : "—";
       /* Hub name/serial come from status sensor state attributes too */
-      const statAttrs = d?.status ? (this._hass?.states[d.status]?.attributes || {}) : {};
+      const statAttrs = d?.status ? (this._hass?.states?.[d.status]?.attributes || {}) : {};
       const hubName   = statAttrs.name || "—";
       const serial    = statAttrs.serial_number || "—";
 
@@ -1484,9 +1507,6 @@
     }
   }
 
-  /* ─ util ─────────────────────────────────────────────────── */
-  function x(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
-
   customElements.define("mhub-card", MhubCard);
 
   window.customCards = window.customCards || [];
@@ -1495,11 +1515,10 @@
     name: "MHUB Card",
     description: "Self-configuring card for the MHUB matrix switcher. No setup needed.",
     preview: true,
-    documentationURL: "https://github.com/yourusername/mhub-card",
   });
 
   console.info(
-    "%c MHUB-CARD %c v5.4.0 ",
+    `%c MHUB-CARD %c v${VERSION} `,
     "background:#3b8aff;color:#fff;font-weight:bold;padding:2px 4px;border-radius:4px 0 0 4px",
     "background:#0d0f14;color:#3b8aff;font-weight:bold;padding:2px 4px;border-radius:0 4px 4px 0"
   );
