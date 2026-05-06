@@ -21,7 +21,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "5.4.1";
+  const VERSION = "5.4.2";
 
   /* ─── utilities ─────────────────────────────────────────── */
   function x(s) {
@@ -1247,11 +1247,12 @@
       const cur        = this._attr(zone.media_player,"source","") || this._sv(zone.source_sensor,"");
       const muted      = zone.mute_switch ? this._sv(zone.mute_switch,"off")==="on" : false;
 
-      /* If body has source grid already — patch in place (no flicker) */
-      if (body && body.querySelector(".sgrid")) {
-        const ico = body.querySelector(".now-ico");
+      /* If body has source grid already for the SAME zone — patch in place (no flicker).
+         If the zone changed (different data-zone attribute), fall through to full rebuild. */
+      if (body && body.querySelector(".sgrid") && body.dataset.zone === zone.output) {
+        const icoWrap = body.querySelector(".now-ico-wrap");
         const nv  = body.querySelector(".now-val");
-        if (ico)  ico.outerHTML = this._nowIcon(cur||"?");
+        if (icoWrap) icoWrap.innerHTML = this._nowIcon(cur||"?");
         if (nv)   nv.textContent = cur ? this._inputName(cur) : "—";
         const mb = body.querySelector("#mbtn");
         if (mb) { mb.className="mb"+(muted?" muted":""); mb.innerHTML=(muted?I.voff:I.von)+" "+(muted?"Unmute":"Mute"); }
@@ -1263,8 +1264,10 @@
         return;
       }
 
-      /* Full build — first render or after zone tab change */
+      /* Full build — first render or after zone change */
       if (!body) return;
+      /* Tag body with zone so patch path can detect zone changes */
+      body.dataset.zone = zone.output;
       const out      = x(zone.output||"?");
       const zoneName = x(this._zoneName(zone));
 
@@ -1280,7 +1283,8 @@
 
       body.innerHTML =
         '<div class="now">'
-          + this._nowIcon(cur||"?")
+          /* Stable wrapper div so innerHTML swap works without outerHTML replacement */
+          +'<div class="now-ico-wrap">'+this._nowIcon(cur||"?")+'</div>'
           +'<div class="sp">'
             +'<div class="now-lbl">Now showing</div>'
             +'<div class="now-val">'+(cur ? x(this._inputName(cur)) : "—")+'</div>'
@@ -1314,8 +1318,8 @@
           btn.classList.add("on");
           const sn3=btn.querySelector(".sname"); if(sn3) sn3.style.color="#3b8aff";
           const nv2=body.querySelector(".now-val"); if(nv2) nv2.textContent=this._inputName(src);
-          const ico2=body.querySelector(".now-ico");
-          if (ico2) ico2.outerHTML = this._nowIcon(src);
+          const icoWrap2=body.querySelector(".now-ico-wrap");
+          if (icoWrap2) icoWrap2.innerHTML = this._nowIcon(src);
           this._call("media_player","select_source",{entity_id:zone.media_player,source:src});
         });
       });
