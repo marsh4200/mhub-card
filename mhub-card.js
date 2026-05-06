@@ -1183,18 +1183,13 @@
         return;
       }
 
-      /* Filter out zones the user has hidden in the editor.
-         If every zone is hidden we fall back to showing all of them so
-         the card never ends up empty due to misconfiguration. */
+      /* Filter out zones the user has hidden in the editor. */
       const hiddenZones = new Set(this._cfg.hidden_zones || []);
       let visibleZones = d.zones.filter(z => !hiddenZones.has(z.output));
       if (!visibleZones.length) visibleZones = d.zones;
-      /* Stash on the instance so the dropdown change handler (bound once)
-         can always read the current list. */
       this._visibleZones = visibleZones;
 
-      /* On first render, restore the last selected zone from localStorage
-         (keyed per entry_id so multi-hub setups don't collide). */
+      /* Restore last selected zone from localStorage on first render */
       if (!this._zoneRestored) {
         this._zoneRestored = true;
         try {
@@ -1207,12 +1202,10 @@
         } catch(_) {}
       }
 
-      /* Clamp the selected zone index to the visible list */
       if (this._zone >= visibleZones.length || this._zone < 0) this._zone = 0;
       const zone = visibleZones[this._zone] || visibleZones[0];
 
-      /* Zone dropdown — rebuild options when the visible-zone set changes
-         (count or order), e.g. when the user toggles hide in the editor. */
+      /* Zone dropdown */
       const drop = this._el("zdrop");
       if (drop) {
         const sig = visibleZones.map(z => z.output).join("|");
@@ -1226,13 +1219,13 @@
             drop._mhubBound = true;
             drop.addEventListener("change", () => {
               this._zone = parseInt(drop.value);
-              /* Persist the chosen zone so a page refresh keeps it selected. */
+              /* Clear optimistic cache when zone changes */
+              this._optSrc = null;
               try {
                 const key = "mhub_card_last_zone_" + (this._cfg.entry_id || "default");
                 const z = (this._visibleZones || [])[this._zone];
                 if (z) localStorage.setItem(key, z.output);
               } catch(_) {}
-              const swBody = this._el("swb"); if (swBody) swBody.innerHTML = "";
               this._sw();
             });
           }
@@ -1240,40 +1233,53 @@
         drop.value = String(this._zone);
       }
 
-      /* Get live data from media_player */
+      /* Get live data from media_player for this zone */
       const hiddenInputs = new Set(this._cfg.hidden_inputs || []);
       const sourceList = (this._attr(zone.media_player,"source_list",[]) || zone.sources.map(s=>s.name))
                           .filter(n => !hiddenInputs.has(n));
-      const cur        = this._attr(zone.media_player,"source","") || this._sv(zone.source_sensor,"");
-      const muted      = zone.mute_switch ? this._sv(zone.mute_switch,"off")==="on" : false;
+      const muted = zone.mute_switch ? this._sv(zone.mute_switch,"off")==="on" : false;
 
-      /* If body has source grid already for the SAME zone — patch in place (no flicker).
-         If the zone changed (different data-zone attribute), fall through to full rebuild. */
-      if (body && body.querySelector(".sgrid") && body.dataset.zone === zone.output) {
+      /* Use optimistic source if we just sent a select_source command and HA hasn't
+         confirmed yet.  The cache is keyed by zone so switching output clears it. */
+      const optKey = zone.media_player;
+      const haCur  = this._attr(zone.media_player,"source","") || this._sv(zone.source_sensor,"");
+      /* If HA has caught up to the optimistic value, clear the cache */
+      if (this._optSrc && this._optSrc.mp === optKey && this._optSrc.src === haCur) {
+        this._optSrc = null;
+      }
+      const cur = (this._optSrc && this._optSrc.mp === optKey) ? this._optSrc.src : haCur;
+
+      if (!body) return;
+
+      /* Detect zone change — clear body so we always do a full rebuild for a new zone */
+      if (body.dataset.zone !== zone.output) {
+        body.innerHTML = "";
+        body.dataset.zone = zone.output;
+      }
+
+      const out      = x(zone.output||"?");
+      const zoneName = x(this._zoneName(zone));
+
+      /* Patch existing grid in-place to avoid flicker — same zone, already built */
+      if (body.querySelector(".sgrid")) {
         const icoWrap = body.querySelector(".now-ico-wrap");
-        const nv  = body.querySelector(".now-val");
+        const nowVal  = body.querySelector("#now-src-val");
         if (icoWrap) icoWrap.innerHTML = this._nowIcon(cur||"?");
-        if (nv)   nv.textContent = cur ? this._inputName(cur) : "—";
+        if (nowVal)  nowVal.textContent = cur ? this._inputName(cur) : "—";
         const mb = body.querySelector("#mbtn");
         if (mb) { mb.className="mb"+(muted?" muted":""); mb.innerHTML=(muted?I.voff:I.von)+" "+(muted?"Unmute":"Mute"); }
         body.querySelectorAll(".sbtn[data-src]").forEach(btn => {
-          const isOn = cur && btn.dataset.src === cur;
-          btn.classList.toggle("on", !!isOn);
+          const isOn = !!(cur && btn.dataset.src === cur);
+          btn.classList.toggle("on", isOn);
           const sn = btn.querySelector(".sname"); if (sn) sn.style.color = isOn ? "#3b8aff" : "";
         });
         return;
       }
 
-      /* Full build — first render or after zone change */
-      if (!body) return;
-      /* Tag body with zone so patch path can detect zone changes */
-      body.dataset.zone = zone.output;
-      const out      = x(zone.output||"?");
-      const zoneName = x(this._zoneName(zone));
-
+      /* Full build */
       const srcHTML = sourceList.length
         ? sourceList.map(name => {
-            const act = cur && cur === name;
+            const act = !!(cur && cur === name);
             return '<button class="sbtn'+(act?" on":"")+'" data-src="'+x(name)+'">'
               + this._srcIcon(name)
               +'<span class="sname">'+x(this._inputName(name))+'</span>'
@@ -1283,11 +1289,10 @@
 
       body.innerHTML =
         '<div class="now">'
-          /* Stable wrapper div so innerHTML swap works without outerHTML replacement */
           +'<div class="now-ico-wrap">'+this._nowIcon(cur||"?")+'</div>'
           +'<div class="sp">'
             +'<div class="now-lbl">Now showing</div>'
-            +'<div class="now-val">'+(cur ? x(this._inputName(cur)) : "—")+'</div>'
+            +'<div class="now-val" id="now-src-val">'+(cur ? x(this._inputName(cur)) : "—")+'</div>'
           +'</div>'
           +'<div class="now-r">'
             +'<div class="now-lbl">Output</div>'
@@ -1310,14 +1315,17 @@
         btn.addEventListener("click", () => {
           if (!zone.media_player) return;
           const src = btn.dataset.src;
-          /* Optimistic instant UI — no waiting for HA poll */
+          /* Store optimistic selection so live updates don't revert the UI
+             before HA confirms the new source */
+          this._optSrc = { mp: zone.media_player, src };
+          /* Optimistic UI update */
           body.querySelectorAll(".sbtn").forEach(b => {
             b.classList.remove("on");
             const sn=b.querySelector(".sname"); if(sn) sn.style.color="";
           });
           btn.classList.add("on");
           const sn3=btn.querySelector(".sname"); if(sn3) sn3.style.color="#3b8aff";
-          const nv2=body.querySelector(".now-val"); if(nv2) nv2.textContent=this._inputName(src);
+          const nv2=body.querySelector("#now-src-val"); if(nv2) nv2.textContent=this._inputName(src);
           const icoWrap2=body.querySelector(".now-ico-wrap");
           if (icoWrap2) icoWrap2.innerHTML = this._nowIcon(src);
           this._call("media_player","select_source",{entity_id:zone.media_player,source:src});
