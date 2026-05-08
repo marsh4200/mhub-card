@@ -21,7 +21,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "5.4.2";
+  const VERSION = "6.0.0";
 
   /* ─── utilities ─────────────────────────────────────────── */
   function x(s) {
@@ -98,183 +98,484 @@
     return { bg:`hsl(${hue},35%,22%)`, fg:`hsl(${hue},75%,68%)`, t:init };
   }
 
-  /* ─── SVG icons ─────────────────────────────────────────── */
+  /* ─── SVG icons (Tabler-style outline, 24px viewBox, 2px stroke) ─── */
   const I = {
-    logo:   `<svg viewBox="0 0 24 24"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg>`,
-    power:  `<svg viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>`,
-    von:    `<svg viewBox="0 0 24 24"><path d="M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z"/></svg>`,
-    voff:   `<svg viewBox="0 0 24 24"><path d="M16.5 12A4.5 4.5 0 0014 7.97V9.5l2.5 2.5V12zm2.5.07c0 .94-.2 1.82-.54 2.64l1.51 1.51A8.796 8.796 0 0021 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.78zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06a8.99 8.99 0 003.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>`,
-    play:   `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`,
-    fn:     `<svg viewBox="0 0 24 24"><path d="M10.59 9.17L5.41 4 4 5.41l5.17 5.17 1.42-1.41zM14.5 4l2.04 2.04L4 18.59 5.41 20 17.96 7.46 20 9.5V4h-5.5zm.33 9.41l-1.41 1.41 3.13 3.13L14.5 20H20v-5.5l-2.04 2.04-3.13-3.13z"/></svg>`,
-    ref:    `<svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>`,
+    logo:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.6 9a9 9 0 0 1 .49 -2M2 12c0 -.81 .1 -1.59 .3 -2.34M4.6 15a9 9 0 0 1 -.5 -2M7 4.6a9 9 0 0 1 2 -.5M12 2c.81 0 1.59 .1 2.34 .3M19.4 9a9 9 0 0 0 -.49 -2M22 12c0 -.81 -.1 -1.59 -.3 -2.34M19.4 15a9 9 0 0 0 .5 -2M17 19.4a9 9 0 0 0 2 -1.4M12 22c-.81 0 -1.59 -.1 -2.34 -.3M7 19.4a9 9 0 0 0 2 1.4"/><circle cx="12" cy="12" r="3"/></svg>`,
+    power:  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 6a7.75 7.75 0 1 0 10 0"/><path d="M12 4l0 8"/></svg>`,
+    von:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8a5 5 0 0 1 0 8"/><path d="M17.7 5a9 9 0 0 1 0 14"/><path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5"/></svg>`,
+    voff:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8a5 5 0 0 1 1.912 4.934m-1.377 2.602a5 5 0 0 1 -.535 .464"/><path d="M17.7 5a9 9 0 0 1 2.362 11.086m-1.676 2.299a9 9 0 0 1 -.686 .615"/><path d="M9.069 5.054l.431 -.554a.8 .8 0 0 1 1.5 .5v2m0 4v8a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l1.294 -1.664"/><path d="M3 3l18 18"/></svg>`,
+    play:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16l13 -8z"/></svg>`,
+    fn:     `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l14 0"/><path d="M5 21l14 0"/><path d="M5 3l7 8l-7 10"/><path d="M19 3l-7 8l7 10"/></svg>`,
+    ref:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4"/><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4"/></svg>`,
+    chev:   `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6l6 -6"/></svg>`,
     navs: {
-      switch:    `<svg viewBox="0 0 24 24"><path d="M4 6h16v2H4zm8 5h8v2h-8zm-8 5h16v2H4z"/></svg>`,
-      volume:    `<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.06c1.48-.74 2.5-2.26 2.5-4.03z"/></svg>`,
-      sequences: `<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>`,
-      ir:        `<svg viewBox="0 0 24 24"><path d="M12 3C6.48 3 2 7.48 2 13h2c0-4.42 3.58-8 8-8s8 3.58 8 8h2c0-5.52-4.48-10-10-10zm0 4c-3.31 0-6 2.69-6 6h2c0-2.21 1.79-4 4-4s4 1.79 4 4h2c0-3.31-2.69-6-6-6zm0 4c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg>`,
-      diag:      `<svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 14H7v-2h5v2zm5-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>`,
+      switch:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10h14l-4 -4"/><path d="M17 14h-14l4 4"/></svg>`,
+      volume:    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 8a5 5 0 0 1 0 8"/><path d="M6 15h-2a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h2l3.5 -4.5a.8 .8 0 0 1 1.5 .5v14a.8 .8 0 0 1 -1.5 .5l-3.5 -4.5"/></svg>`,
+      sequences: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16l13 -8z"/></svg>`,
+      ir:        `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h14a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2z"/><path d="M9 9m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0"/><path d="M9 13l0 4"/><path d="M13 9l2 0"/><path d="M13 13l2 0"/><path d="M13 17l2 0"/></svg>`,
+      diag:      `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4"/><path d="M12 16h.01"/></svg>`,
     }
   };
 
-  /* ─── CSS ────────────────────────────────────────────────── */
+  /* ─── CSS ──────────────────────────────────────────────────
+     Uses Home Assistant theme variables so the card adapts to
+     light/dark themes automatically. Falls back to dark values. */
   const CSS = `
     *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
-    :host { display:block; }
+    :host {
+      display:block;
+      --mh-bg:        var(--ha-card-background, var(--card-background-color, #1c1f26));
+      --mh-surface:   var(--secondary-background-color, rgba(255,255,255,.04));
+      --mh-surface-2: var(--primary-background-color, rgba(0,0,0,.18));
+      --mh-text:      var(--primary-text-color, #e8eeff);
+      --mh-text-2:    var(--secondary-text-color, #8a93a8);
+      --mh-text-3:    var(--disabled-text-color, #6a7490);
+      --mh-border:    var(--divider-color, rgba(127,127,127,.2));
+      --mh-accent:    var(--primary-color, #3b8aff);
+      --mh-accent-fg: var(--text-primary-color, #fff);
+      --mh-accent-bg: var(--primary-color, #3b8aff);
+      --mh-success:   var(--success-color, #22d47a);
+      --mh-warn:      var(--warning-color, #ffb830);
+      --mh-error:     var(--error-color, #ff4d4d);
+      --mh-radius:    var(--ha-card-border-radius, 16px);
+    }
 
     .card {
-      background: #0d0f14;
-      border-radius: 16px;
+      background: var(--mh-bg);
+      border-radius: var(--mh-radius);
       overflow: hidden;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      color: #e8eeff;
-      border: 1px solid rgba(255,255,255,.09);
+      font-family: var(--paper-font-body1_-_font-family, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
+      color: var(--mh-text);
+      border: 1px solid var(--mh-border);
+      display: flex; flex-direction: column;
     }
 
-    /* header */
-    .hdr { background:#08090d; padding:12px 16px; display:flex; align-items:center; gap:10px; border-bottom:1px solid rgba(255,255,255,.08); }
-    .hdr-logo { width:36px; height:36px; background:#0d1f42; border:1px solid #2a4a8e; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-    .hdr-logo svg { width:18px; height:18px; fill:#4a9eff; display:block; }
-    .hdr-title { font-size:15px; font-weight:600; }
-    .hdr-sub { font-size:11px; color:#6a7490; margin-top:1px; }
-    .pill { display:flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:500; border:1px solid; flex-shrink:0; }
-    .pill.on  { background:#0d2a1a; border-color:#1a5c34; color:#22d47a; }
-    .pill.off { background:#2a0d0d; border-color:#5c1a1a; color:#ff4d4d; }
-    .pdot { width:6px; height:6px; border-radius:50%; background:currentColor; }
-    .pw-btn { width:30px; height:30px; border-radius:8px; border:1px solid rgba(255,255,255,.13); background:transparent; color:#6a7490; display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; flex-shrink:0; }
-    .pw-btn svg { width:15px; height:15px; fill:currentColor; display:block; }
-    .pw-btn:hover { border-color:#3b8aff; color:#3b8aff; }
+    /* ─── header ─── */
+    .hdr {
+      padding: 14px 16px;
+      display: flex; align-items: center; gap: 12px;
+      border-bottom: 1px solid var(--mh-border);
+    }
+    .hdr-logo {
+      width: 38px; height: 38px;
+      border-radius: 11px;
+      background: color-mix(in srgb, var(--mh-accent) 14%, transparent);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .hdr-logo svg { width: 20px; height: 20px; color: var(--mh-accent); display: block; }
+    .hdr-text { flex: 1; min-width: 0; }
+    .hdr-title {
+      font-size: 16px; font-weight: 600; letter-spacing: -0.01em;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .hdr-sub {
+      font-size: 12px; color: var(--mh-text-2);
+      margin-top: 2px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .pill {
+      display: flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 600;
+      flex-shrink: 0;
+    }
+    .pill.on  { background: color-mix(in srgb, var(--mh-success) 16%, transparent); color: var(--mh-success); }
+    .pill.off { background: color-mix(in srgb, var(--mh-error) 16%, transparent);   color: var(--mh-error);   }
+    .pdot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .pw-btn {
+      width: 38px; height: 38px;
+      border-radius: 11px;
+      border: none;
+      background: color-mix(in srgb, var(--mh-success) 14%, transparent);
+      color: var(--mh-success);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; padding: 0; flex-shrink: 0;
+      transition: transform .1s, background .15s;
+    }
+    .pw-btn.off { background: color-mix(in srgb, var(--mh-error) 14%, transparent); color: var(--mh-error); }
+    .pw-btn:hover  { background: color-mix(in srgb, var(--mh-success) 24%, transparent); }
+    .pw-btn.off:hover { background: color-mix(in srgb, var(--mh-error) 24%, transparent); }
+    .pw-btn:active { transform: scale(.94); }
+    .pw-btn svg { width: 18px; height: 18px; display: block; }
 
-    /* nav */
-    .nav { background:#08090d; display:flex; border-bottom:1px solid rgba(255,255,255,.08); overflow-x:auto; scrollbar-width:none; }
-    .nav::-webkit-scrollbar { display:none; }
-    .nb { padding:10px 13px; font-size:12px; font-weight:500; color:#6a7490; cursor:pointer; border:none; border-bottom:2px solid transparent; background:transparent; white-space:nowrap; display:flex; align-items:center; gap:5px; font-family:inherit; flex-shrink:0; transition:color .1s; }
-    .nb svg { width:13px; height:13px; fill:currentColor; display:block; flex-shrink:0; }
-    .nb.on { color:#3b8aff; border-bottom-color:#3b8aff; }
-    .nb:hover:not(.on) { color:#e8eeff; }
+    /* ─── pages ─── */
+    .pg { display: none; }
+    .pg.on { display: block; }
+    .body { padding: 16px; }
 
-    /* pages */
-    .pg { display:none; }
-    .pg.on { display:block; }
+    /* ─── now-playing hero ─── */
+    .now-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .now-head-lbl {
+      font-size: 11px; font-weight: 600; letter-spacing: .06em;
+      text-transform: uppercase; color: var(--mh-text-3);
+    }
+    .zsel-btn {
+      font-size: 12px; color: var(--mh-text-2);
+      background: transparent; border: none;
+      padding: 4px 8px; border-radius: 6px;
+      cursor: pointer; display: flex; align-items: center; gap: 4px;
+      font-family: inherit; max-width: 65%;
+      white-space: nowrap; overflow: hidden;
+    }
+    .zsel-btn:hover { color: var(--mh-text); background: var(--mh-surface); }
+    .zsel-btn span { overflow: hidden; text-overflow: ellipsis; }
+    .zsel-btn svg  { width: 14px; height: 14px; flex-shrink: 0; transition: transform .15s; }
+    .zsel-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
 
-    /* zone dropdown */
-    .zdrop-wrap { padding:13px 16px 0; }
+    /* native select sits invisibly over the button so it's still clickable
+       and keyboard-accessible (and works inside HA's shadow root). */
+    .zsel-wrap { position: relative; }
     .zdrop {
-      width:100%; padding:9px 12px; border-radius:10px;
-      border:1px solid rgba(255,255,255,.13); background:#08090d;
-      color:#e8eeff; font-size:13px; font-weight:500; font-family:inherit;
-      cursor:pointer; appearance:none; -webkit-appearance:none;
-      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%236a7490' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
-      background-repeat:no-repeat; background-position:right 10px center; background-size:20px;
-      padding-right:36px;
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      opacity: 0; cursor: pointer;
+      font-family: inherit; font-size: 12px;
+      border: none; background: transparent;
     }
-    .zdrop:focus { outline:none; border-color:#3b8aff; }
 
-    /* body */
-    .body { padding:13px 16px 16px; }
+    .now {
+      border-radius: 14px;
+      padding: 18px;
+      display: flex; align-items: center; gap: 14px;
+      margin-bottom: 14px;
+      transition: background .25s ease;
+      min-height: 92px;
+    }
+    .now-ico {
+      width: 56px; height: 56px;
+      border-radius: 13px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 800;
+      flex-shrink: 0; overflow: hidden;
+      letter-spacing: -.02em;
+    }
+    .now-ico img { width: 100%; height: 100%; object-fit: cover; }
+    .now-text { flex: 1; min-width: 0; }
+    .now-name {
+      font-size: 19px; font-weight: 600; letter-spacing: -.01em;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .now-meta {
+      font-size: 13px; margin-top: 2px;
+      opacity: .82;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .now-mute {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255,255,255,.18);
+      color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; padding: 0;
+      flex-shrink: 0;
+      transition: background .15s, transform .1s;
+    }
+    .now-mute:hover  { background: rgba(255,255,255,.28); }
+    .now-mute:active { transform: scale(.92); }
+    .now-mute.muted  { background: var(--mh-warn); color: #1a1300; }
+    .now-mute svg    { width: 20px; height: 20px; display: block; }
 
-    /* now bar */
-    .now { background:#08090d; border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:11px 13px; display:flex; align-items:center; gap:10px; margin-bottom:13px; }
-    .now-ico { width:38px; height:38px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:800; flex-shrink:0; letter-spacing:-.02em; }
-    .now-lbl { font-size:11px; color:#6a7490; }
-    .now-val { font-size:14px; font-weight:600; }
-    .sp { flex:1; min-width:0; }
-    .now-r { text-align:right; flex-shrink:0; }
-    .mb { padding:5px 11px; border-radius:6px; border:1px solid rgba(255,255,255,.13); background:transparent; color:#6a7490; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:4px; white-space:nowrap; font-family:inherit; flex-shrink:0; transition:background .1s, border-color .1s, color .1s; }
-    .mb svg { width:13px; height:13px; fill:currentColor; display:block; }
-    .mb.muted { background:#2a1e00; border-color:#ffb830; color:#ffb830; }
-    .mb:hover:not(.muted) { color:#e8eeff; border-color:rgba(255,255,255,.28); }
+    /* When no source is active, fall back to surface bg */
+    .now.idle {
+      background: var(--mh-surface);
+      color: var(--mh-text);
+    }
+    .now.idle .now-ico {
+      background: var(--mh-surface-2);
+      color: var(--mh-text-3);
+    }
+    .now.idle .now-meta { color: var(--mh-text-2); opacity: 1; }
+    .now.idle .now-mute {
+      background: var(--mh-surface-2);
+      color: var(--mh-text-2);
+    }
 
-    /* sources */
-    .slbl { font-size:10px; font-weight:600; letter-spacing:.08em; color:#6a7490; margin-bottom:9px; text-transform:uppercase; }
-    .sgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:7px; }
+    /* ─── inline volume row (only when zone has a volume entity) ─── */
+    .vol-inline {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 14px;
+      background: var(--mh-surface);
+      border-radius: 12px;
+      margin-bottom: 18px;
+    }
+    .vol-inline svg { width: 18px; height: 18px; color: var(--mh-text-2); flex-shrink: 0; display: block; }
+    .vol-inline .vs { flex: 1; min-width: 0; }
+    .vol-inline .vv {
+      font-size: 13px; font-weight: 600; min-width: 30px;
+      text-align: right; color: var(--mh-text);
+    }
+
+    /* ─── sources grid ─── */
+    .slbl {
+      font-size: 11px; font-weight: 600; letter-spacing: .06em;
+      color: var(--mh-text-3); margin-bottom: 10px;
+      text-transform: uppercase;
+    }
+    .sgrid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    @media (min-width: 480px) { .sgrid { grid-template-columns: repeat(4, 1fr); } }
     .sbtn {
-      border:1px solid rgba(255,255,255,.09);
-      border-radius:10px; padding:10px 6px 8px;
-      cursor:pointer; background:#08090d;
-      display:flex; flex-direction:column; align-items:center; gap:5px;
-      font-family:inherit;
-      /* no transition — instant response */
+      border: 1px solid var(--mh-border);
+      border-radius: 14px;
+      padding: 14px 8px 12px;
+      cursor: pointer;
+      background: var(--mh-surface);
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      font-family: inherit;
+      min-height: 96px;
+      transition: transform .08s, border-color .15s;
     }
-    .sbtn:hover { border-color:rgba(255,255,255,.28); background:#161922; }
-    .sbtn:active { background:#0d1e3a; border-color:#3b8aff; transform:scale(.96); }
-    .sbtn.on { border-color:#3b8aff; background:#0d1e3a; }
-    .sbtn.on .sname { color:#3b8aff; }
-    .sico { width:54px; height:54px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:800; flex-shrink:0; }
-    .sname { font-size:10px; color:#6a7490; text-align:center; line-height:1.3; word-break:break-word; }
+    .sbtn:hover  { border-color: color-mix(in srgb, var(--mh-text) 25%, transparent); }
+    .sbtn:active { transform: scale(.96); }
+    .sbtn.on {
+      border: 2px solid var(--mh-accent);
+      padding: 13px 7px 11px;     /* compensate for thicker border */
+    }
+    .sico {
+      width: 44px; height: 44px;
+      border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 800;
+      flex-shrink: 0; overflow: hidden;
+      letter-spacing: -.02em;
+    }
+    .sico img { width: 100%; height: 100%; object-fit: cover; }
+    .sname {
+      font-size: 12px; font-weight: 500;
+      color: var(--mh-text-2);
+      text-align: center; line-height: 1.3;
+      word-break: break-word;
+    }
+    .sbtn.on .sname { color: var(--mh-accent); }
 
-    /* volume */
-    .vrow { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
-    .vlbl { font-size:12px; color:#6a7490; width:110px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .vs { flex:1; min-width:0; -webkit-appearance:none; appearance:none; height:4px; border-radius:2px; background:rgba(255,255,255,.12); outline:none; cursor:pointer; }
-    .vs::-webkit-slider-thumb { -webkit-appearance:none; width:16px; height:16px; border-radius:50%; background:#3b8aff; cursor:pointer; }
-    .vs::-moz-range-thumb { width:16px; height:16px; border-radius:50%; background:#3b8aff; cursor:pointer; border:none; }
-    .vv { font-size:12px; color:#e8eeff; width:32px; text-align:right; flex-shrink:0; }
+    /* ─── volume sliders (volume tab) ─── */
+    .vrow { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .vlbl {
+      font-size: 13px; color: var(--mh-text);
+      width: 110px; flex-shrink: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      font-weight: 500;
+    }
+    .vs {
+      flex: 1; min-width: 0;
+      -webkit-appearance: none; appearance: none;
+      height: 4px; border-radius: 2px;
+      background: var(--mh-border);
+      outline: none; cursor: pointer;
+    }
+    .vs::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--mh-accent); cursor: pointer;
+      border: 2px solid var(--mh-bg);
+    }
+    .vs::-moz-range-thumb {
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--mh-accent); cursor: pointer;
+      border: 2px solid var(--mh-bg);
+    }
+    .vv {
+      font-size: 13px; color: var(--mh-text);
+      width: 36px; text-align: right; flex-shrink: 0;
+      font-weight: 600;
+    }
 
-    /* sequences */
-    .seqg { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:7px; }
-    .seqb { background:#08090d; border:1px solid rgba(255,255,255,.09); border-radius:10px; padding:11px 13px; cursor:pointer; color:#e8eeff; display:flex; align-items:center; gap:7px; font-size:13px; font-family:inherit; text-align:left; width:100%; }
-    .seqb svg { width:14px; height:14px; fill:#3b8aff; flex-shrink:0; display:block; }
-    .seqb:hover { border-color:rgba(255,255,255,.22); background:#161922; }
-    .seqb:active { transform:scale(.98); }
-    .seqb.fired { border-color:#22d47a!important; color:#22d47a; }
-    .seqb.fired svg { fill:#22d47a; }
+    /* ─── mute pill button (used in volume tab) ─── */
+    .mb {
+      padding: 6px 12px; border-radius: 8px;
+      border: 1px solid var(--mh-border);
+      background: transparent;
+      color: var(--mh-text-2);
+      font-size: 12px; font-weight: 500;
+      cursor: pointer;
+      display: inline-flex; align-items: center; gap: 5px;
+      white-space: nowrap; font-family: inherit;
+      transition: border-color .15s, color .15s;
+    }
+    .mb svg { width: 14px; height: 14px; display: block; }
+    .mb.muted {
+      background: color-mix(in srgb, var(--mh-warn) 14%, transparent);
+      border-color: color-mix(in srgb, var(--mh-warn) 40%, transparent);
+      color: var(--mh-warn);
+    }
+    .mb:hover:not(.muted) { color: var(--mh-text); border-color: color-mix(in srgb, var(--mh-text) 30%, transparent); }
 
-    /* IR/CEC — each device is a collapsible card */
-    .irdev { margin-bottom:8px; border:1px solid rgba(255,255,255,.09); border-radius:10px; background:#08090d; overflow:hidden; }
-    .irdev[open] { border-color:rgba(255,255,255,.18); }
+    /* ─── sequences ─── */
+    .seqg {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px;
+    }
+    .seqb {
+      background: var(--mh-surface);
+      border: 1px solid var(--mh-border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      cursor: pointer;
+      color: var(--mh-text);
+      display: flex; align-items: center; gap: 9px;
+      font-size: 13px; font-weight: 500;
+      font-family: inherit;
+      text-align: left; width: 100%;
+      transition: border-color .15s, transform .08s;
+    }
+    .seqb svg { width: 16px; height: 16px; color: var(--mh-accent); flex-shrink: 0; display: block; }
+    .seqb:hover  { border-color: color-mix(in srgb, var(--mh-text) 25%, transparent); }
+    .seqb:active { transform: scale(.97); }
+    .seqb.fired {
+      border-color: var(--mh-success) !important;
+      color: var(--mh-success);
+    }
+    .seqb.fired svg { color: var(--mh-success); }
+
+    /* ─── IR / CEC accordions ─── */
+    .irdev {
+      margin-bottom: 8px;
+      border: 1px solid var(--mh-border);
+      border-radius: 12px;
+      background: var(--mh-surface);
+      overflow: hidden;
+    }
+    .irdev[open] { border-color: color-mix(in srgb, var(--mh-text) 22%, transparent); }
     .irdsum {
-      list-style:none; cursor:pointer; padding:11px 13px;
-      display:flex; align-items:center; gap:9px;
-      font-size:13px; color:#e8eeff; font-weight:500;
-      user-select:none;
+      list-style: none; cursor: pointer;
+      padding: 12px 14px;
+      display: flex; align-items: center; gap: 10px;
+      font-size: 13px; color: var(--mh-text); font-weight: 500;
+      user-select: none;
     }
-    .irdsum::-webkit-details-marker { display:none; }
-    .irdsum::marker { display:none; content:""; }
-    .irdsum:hover { background:#161922; }
+    .irdsum::-webkit-details-marker { display: none; }
+    .irdsum::marker { display: none; content: ""; }
+    .irdsum:hover { background: var(--mh-surface-2); }
     .irdchev {
-      width:14px; height:14px; flex-shrink:0;
-      transition:transform .15s ease;
-      fill:#6a7490;
+      width: 16px; height: 16px;
+      flex-shrink: 0;
+      transition: transform .15s ease;
+      color: var(--mh-text-3);
     }
-    .irdev[open] .irdchev { transform:rotate(90deg); fill:#3b8aff; }
-    .irdtitle { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .irdev[open] .irdchev { transform: rotate(180deg); color: var(--mh-accent); }
+    .irdtitle { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .irdcount {
-      font-size:10px; color:#6a7490; background:#0d1019;
-      border:1px solid rgba(255,255,255,.09);
-      padding:2px 8px; border-radius:20px; flex-shrink:0;
-      font-weight:600;
+      font-size: 11px; color: var(--mh-text-3);
+      background: var(--mh-surface-2);
+      padding: 2px 9px; border-radius: 20px;
+      flex-shrink: 0; font-weight: 600;
     }
-    .irdev[open] .irdcount { color:#3b8aff; border-color:#1d3a6e; background:#0d1e3a; }
-    .irdbody { padding:4px 13px 12px; border-top:1px solid rgba(255,255,255,.06); }
-    .irg { display:flex; flex-wrap:wrap; gap:5px; padding-top:10px; }
-    .irb { padding:5px 12px; border-radius:6px; border:1px solid rgba(255,255,255,.09); background:#0d1019; color:#6a7490; font-size:12px; cursor:pointer; font-family:inherit; }
-    .irb:hover { border-color:rgba(255,255,255,.22); color:#e8eeff; background:#161922; }
-    .irb:active { transform:scale(.96); }
-    .irb.fired { border-color:#3b8aff; color:#3b8aff; background:#0d1e3a; }
+    .irdev[open] .irdcount {
+      color: var(--mh-accent);
+      background: color-mix(in srgb, var(--mh-accent) 16%, transparent);
+    }
+    .irdbody { padding: 4px 14px 14px; border-top: 1px solid var(--mh-border); }
+    .irg { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 12px; }
+    .irb {
+      padding: 6px 13px; border-radius: 8px;
+      border: 1px solid var(--mh-border);
+      background: var(--mh-surface-2);
+      color: var(--mh-text-2);
+      font-size: 12px; font-weight: 500;
+      cursor: pointer; font-family: inherit;
+      transition: border-color .15s, color .15s, transform .08s;
+    }
+    .irb:hover  { border-color: color-mix(in srgb, var(--mh-text) 25%, transparent); color: var(--mh-text); }
+    .irb:active { transform: scale(.96); }
+    .irb.fired {
+      border-color: var(--mh-accent);
+      color: var(--mh-accent);
+      background: color-mix(in srgb, var(--mh-accent) 14%, transparent);
+    }
 
-    /* diag */
-    .dgrid { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-bottom:12px; }
-    .dcell { background:#08090d; border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:11px 13px; }
-    .dkey { font-size:10px; font-weight:600; letter-spacing:.07em; color:#6a7490; text-transform:uppercase; margin-bottom:3px; }
-    .dval { font-size:14px; font-weight:600; }
-    .dval.ok { color:#22d47a; }
-    .dval.warn { color:#ffb830; }
-    .drow { display:flex; justify-content:space-between; font-size:12px; padding:3px 0; gap:8px; }
-    .dk { color:#6a7490; flex-shrink:0; }
-    .dv { color:#e8eeff; text-align:right; word-break:break-all; }
-    .stk { display:inline-flex; padding:2px 8px; border-radius:20px; font-size:10px; font-weight:600; background:#1a0f2e; border:1px solid #3d2070; color:#a070ff; margin-left:6px; vertical-align:middle; }
+    /* ─── diagnostics ─── */
+    .dgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+    .dcell {
+      background: var(--mh-surface);
+      border: 1px solid var(--mh-border);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+    .dkey {
+      font-size: 11px; font-weight: 600; letter-spacing: .05em;
+      color: var(--mh-text-3); text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .dval { font-size: 15px; font-weight: 600; }
+    .dval.ok   { color: var(--mh-success); }
+    .dval.warn { color: var(--mh-warn); }
+    .drow {
+      display: flex; justify-content: space-between;
+      font-size: 13px; padding: 5px 0; gap: 10px;
+    }
+    .dk { color: var(--mh-text-2); flex-shrink: 0; }
+    .dv { color: var(--mh-text); text-align: right; word-break: break-all; font-weight: 500; }
 
-    /* footer */
-    .ftr { border-top:1px solid rgba(255,255,255,.08); padding:9px 16px; display:flex; justify-content:space-between; align-items:center; background:#08090d; }
-    .finfo { font-size:11px; color:#6a7490; }
-    .rbtn { padding:4px 11px; border-radius:6px; border:1px solid rgba(255,255,255,.13); background:transparent; color:#6a7490; font-size:11px; cursor:pointer; display:flex; align-items:center; gap:4px; font-family:inherit; }
-    .rbtn svg { width:12px; height:12px; fill:currentColor; display:block; }
-    .rbtn:hover { color:#3b8aff; border-color:#3b8aff; }
+    /* ─── bottom tab bar ─── */
+    .navbar {
+      display: flex;
+      border-top: 1px solid var(--mh-border);
+      background: var(--mh-surface);
+    }
+    .nb {
+      flex: 1;
+      padding: 10px 4px 9px;
+      border: none;
+      background: transparent;
+      color: var(--mh-text-3);
+      cursor: pointer;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 4px;
+      font-family: inherit;
+      border-top: 2px solid transparent;
+      transition: color .12s;
+      min-width: 0;
+    }
+    .nb svg { width: 20px; height: 20px; display: block; }
+    .nb-lbl {
+      font-size: 11px; font-weight: 500;
+      white-space: nowrap;
+      max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+    }
+    .nb.on {
+      color: var(--mh-accent);
+      border-top-color: var(--mh-accent);
+      background: var(--mh-bg);
+    }
+    .nb:hover:not(.on) { color: var(--mh-text); }
 
-    /* utils */
-    .div { height:1px; background:rgba(255,255,255,.07); margin:11px 0; }
-    .empty { padding:24px; text-align:center; color:#6a7490; font-size:13px; line-height:1.6; }
-    .loading { padding:32px; text-align:center; color:#6a7490; font-size:13px; }
+    /* ─── footer (refresh) ─── */
+    .ftr {
+      border-top: 1px solid var(--mh-border);
+      padding: 8px 14px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .finfo { font-size: 11px; color: var(--mh-text-3); }
+    .rbtn {
+      padding: 5px 11px; border-radius: 8px;
+      border: 1px solid var(--mh-border);
+      background: transparent;
+      color: var(--mh-text-2);
+      font-size: 11px; font-weight: 500;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 5px;
+      font-family: inherit;
+      transition: color .15s, border-color .15s;
+    }
+    .rbtn svg { width: 13px; height: 13px; display: block; }
+    .rbtn:hover { color: var(--mh-accent); border-color: var(--mh-accent); }
+
+    /* ─── utils ─── */
+    .div { height: 1px; background: var(--mh-border); margin: 14px 0; }
+    .empty {
+      padding: 28px 20px; text-align: center;
+      color: var(--mh-text-2); font-size: 13px; line-height: 1.6;
+    }
+    .loading { padding: 36px; text-align: center; color: var(--mh-text-2); font-size: 13px; }
   `;
 
   /* ═══════════════════════════════════════════════════════════
@@ -936,21 +1237,26 @@
       const url = this._extractUrl(raw);
       cls = cls || "sico";
       if (url) {
-        return `<div class="${cls}" style="background:#08090d;overflow:hidden"><img src="${x(url)}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit" alt=""></div>`;
+        return `<div class="${cls}" style="background:var(--mh-surface-2)"><img src="${x(url)}" alt=""></div>`;
       }
       const b = brand(name);
       return `<div class="${cls}" style="background:${b.bg};color:${b.fg}">${b.t}</div>`;
     }
 
-    /* Same but for the "now showing" 38×38 badge */
+    /* Same but for the "now showing" 56×56 hero badge */
     _nowIcon(name) {
       const raw = (this._cfg.input_icons || {})[name];
       const url = this._extractUrl(raw);
       if (url) {
-        return `<div class="now-ico" style="background:#08090d;overflow:hidden"><img src="${x(url)}" style="width:100%;height:100%;object-fit:cover;border-radius:inherit" alt=""></div>`;
+        return `<div class="now-ico" style="background:rgba(255,255,255,.18)"><img src="${x(url)}" alt=""></div>`;
       }
       const b = brand(name||"?");
-      return `<div class="now-ico" style="background:${b.bg};color:${b.fg}">${b.t}</div>`;
+      return `<div class="now-ico" style="background:rgba(255,255,255,.18);color:#fff">${b.t}</div>`;
+    }
+
+    /* For the idle (no source) state — uses surface colours from theme */
+    _nowIconIdle() {
+      return `<div class="now-ico">—</div>`;
     }
 
     /* ─ build ───────────────────────────────────────────────── */
@@ -1083,24 +1389,33 @@
     _shell() {
       const d = this._disc || {};
       const pages = ["switch","volume","sequences","ir","diag"];
-      const lbl   = {switch:"Switch",volume:"Volume",sequences:"Sequences",ir:"IR / CEC",diag:"Diagnostics"};
-      const nav   = pages.map(p=>`<button class="nb${p===this._page?" on":""}" data-p="${p}">${I.navs[p]}${lbl[p]}</button>`).join("");
+      const lbl   = {switch:"Switch",volume:"Volume",sequences:"Scenes",ir:"Remote",diag:"Info"};
+      const nav   = pages.map(p =>
+        `<button class="nb${p===this._page?" on":""}" data-p="${p}">`
+        + I.navs[p]
+        + `<span class="nb-lbl">${lbl[p]}</span>`
+        + `</button>`
+      ).join("");
+      const isOn  = !d.power_switch || (this._hass && d.power_switch && this._sv(d.power_switch,"on")==="on");
       return `<div class="card">
         <div class="hdr">
           <div class="hdr-logo">${I.logo}</div>
-          <div style="flex:1;min-width:0">
+          <div class="hdr-text">
             <div class="hdr-title" id="htitle">${x(this._cfg.title||d.title||"MHUB")}</div>
             <div class="hdr-sub"   id="hsub">HDANYWHERE</div>
           </div>
           <div class="pill on" id="spill"><span class="pdot"></span><span id="stxt">Online</span></div>
-          ${d.power_switch?`<button class="pw-btn" id="pwbtn" title="System power">${I.power}</button>`:""}
+          ${d.power_switch?`<button class="pw-btn${isOn?"":" off"}" id="pwbtn" title="System power" aria-label="System power">${I.power}</button>`:""}
         </div>
-        <div class="nav">${nav}</div>
-        <div class="pg on" id="pg-switch"><div class="zdrop-wrap"><select class="zdrop" id="zdrop"></select></div><div class="body" id="swb"></div></div>
+
+        <div class="pg on" id="pg-switch"><div class="body" id="swb"></div></div>
         <div class="pg"    id="pg-volume"><div class="body" id="volb"></div></div>
         <div class="pg"    id="pg-sequences"><div class="body" id="seqb"></div></div>
         <div class="pg"    id="pg-ir"><div class="body" id="irb"></div></div>
         <div class="pg"    id="pg-diag"><div class="body" id="diagb"></div></div>
+
+        <div class="navbar">${nav}</div>
+
         <div class="ftr">
           <span class="finfo" id="ftxt">Updated just now</span>
           <button class="rbtn" id="rbtn">${I.ref} Refresh</button>
@@ -1155,11 +1470,13 @@
         sub.textContent = s;
       }
 
-      /* power pill */
+      /* power pill + power button */
       const isOn = !d?.power_switch || this._sv(d.power_switch,"on")==="on";
       const pill = this._el("spill"), ptxt = this._el("stxt");
       if (pill) pill.className = "pill "+(isOn?"on":"off");
       if (ptxt) ptxt.textContent = isOn?"Online":"Standby";
+      const pwb = this._el("pwbtn");
+      if (pwb) pwb.className = "pw-btn"+(isOn?"":" off");
 
       this._renderPage();
     }
@@ -1205,45 +1522,18 @@
       if (this._zone >= visibleZones.length || this._zone < 0) this._zone = 0;
       const zone = visibleZones[this._zone] || visibleZones[0];
 
-      /* Zone dropdown */
-      const drop = this._el("zdrop");
-      if (drop) {
-        const sig = visibleZones.map(z => z.output).join("|");
-        if (drop.dataset.sig !== sig) {
-          drop.dataset.sig = sig;
-          drop.innerHTML = visibleZones.map((z,i) => {
-            const label = this._zoneName(z);
-            return `<option value="${i}">Output ${x(z.output||String.fromCharCode(65+i))} · ${x(label)}</option>`;
-          }).join("");
-          if (!drop._mhubBound) {
-            drop._mhubBound = true;
-            drop.addEventListener("change", () => {
-              this._zone = parseInt(drop.value);
-              /* Clear optimistic cache when zone changes */
-              this._optSrc = null;
-              try {
-                const key = "mhub_card_last_zone_" + (this._cfg.entry_id || "default");
-                const z = (this._visibleZones || [])[this._zone];
-                if (z) localStorage.setItem(key, z.output);
-              } catch(_) {}
-              this._sw();
-            });
-          }
-        }
-        drop.value = String(this._zone);
-      }
-
       /* Get live data from media_player for this zone */
       const hiddenInputs = new Set(this._cfg.hidden_inputs || []);
       const sourceList = (this._attr(zone.media_player,"source_list",[]) || zone.sources.map(s=>s.name))
                           .filter(n => !hiddenInputs.has(n));
       const muted = zone.mute_switch ? this._sv(zone.mute_switch,"off")==="on" : false;
+      const hasVol = !!zone.volume_entity;
+      const volVal = hasVol ? Math.round(parseFloat(this._sv(zone.volume_entity,"0"))||0) : 0;
 
       /* Use optimistic source if we just sent a select_source command and HA hasn't
          confirmed yet.  The cache is keyed by zone so switching output clears it. */
       const optKey = zone.media_player;
       const haCur  = this._attr(zone.media_player,"source","") || this._sv(zone.source_sensor,"");
-      /* If HA has caught up to the optimistic value, clear the cache */
       if (this._optSrc && this._optSrc.mp === optKey && this._optSrc.src === haCur) {
         this._optSrc = null;
       }
@@ -1251,83 +1541,199 @@
 
       if (!body) return;
 
+      const out      = x(zone.output||"?");
+      const zoneName = x(this._zoneName(zone));
+
       /* Detect zone change — clear body so we always do a full rebuild for a new zone */
       if (body.dataset.zone !== zone.output) {
         body.innerHTML = "";
         body.dataset.zone = zone.output;
       }
 
-      const out      = x(zone.output||"?");
-      const zoneName = x(this._zoneName(zone));
-
-      /* Patch existing grid in-place to avoid flicker — same zone, already built */
+      /* Patch existing layout in-place to avoid flicker — same zone, already built */
       if (body.querySelector(".sgrid")) {
-        const icoWrap = body.querySelector(".now-ico-wrap");
-        const nowVal  = body.querySelector("#now-src-val");
-        if (icoWrap) icoWrap.innerHTML = this._nowIcon(cur||"?");
-        if (nowVal)  nowVal.textContent = cur ? this._inputName(cur) : "—";
-        const mb = body.querySelector("#mbtn");
-        if (mb) { mb.className="mb"+(muted?" muted":""); mb.innerHTML=(muted?I.voff:I.von)+" "+(muted?"Unmute":"Mute"); }
+        /* Hero update */
+        const nowEl = body.querySelector(".now");
+        const ico   = body.querySelector(".now-ico-wrap");
+        const nm    = body.querySelector("#now-name");
+        const mt    = body.querySelector("#now-meta");
+        const mute  = body.querySelector("#mbtn-hero");
+        if (cur) {
+          const b = brand(cur);
+          if (nowEl) {
+            nowEl.classList.remove("idle");
+            nowEl.style.background = b.bg;
+            nowEl.style.color      = b.fg;
+          }
+          if (ico) ico.innerHTML = this._nowIcon(cur);
+          if (nm)  nm.textContent = this._inputName(cur);
+          if (mt)  mt.textContent = hasVol ? `Volume ${volVal}${muted?" · muted":""}` : (muted?"Muted":"Active");
+        } else {
+          if (nowEl) {
+            nowEl.classList.add("idle");
+            nowEl.style.background = "";
+            nowEl.style.color      = "";
+          }
+          if (ico) ico.innerHTML = this._nowIconIdle();
+          if (nm)  nm.textContent = "Nothing playing";
+          if (mt)  mt.textContent = "Tap a source below";
+        }
+        if (mute) {
+          mute.className = "now-mute"+(muted?" muted":"");
+          mute.innerHTML = muted?I.voff:I.von;
+          mute.setAttribute("aria-label", muted?"Unmute":"Mute");
+        }
+        /* Inline volume update — but skip while user is dragging */
+        if (hasVol) {
+          const sl = body.querySelector(".vol-inline .vs");
+          const vv = body.querySelector(".vol-inline .vv");
+          if (sl && !this._drag["zh"]) sl.value = volVal;
+          if (vv) vv.textContent = volVal;
+        }
+        /* Zone selector label */
+        const zlbl = body.querySelector("#zsel-lbl");
+        if (zlbl) zlbl.textContent = `Output ${out} · ${zoneName}`;
+        /* Source tiles */
         body.querySelectorAll(".sbtn[data-src]").forEach(btn => {
           const isOn = !!(cur && btn.dataset.src === cur);
           btn.classList.toggle("on", isOn);
-          const sn = btn.querySelector(".sname"); if (sn) sn.style.color = isOn ? "#3b8aff" : "";
         });
         return;
       }
 
-      /* Full build */
+      /* ── Full build ── */
+      const heroBrand = cur ? brand(cur) : null;
+      const heroStyle = heroBrand ? `background:${heroBrand.bg};color:${heroBrand.fg}` : "";
+      const heroClass = cur ? "now" : "now idle";
+      const heroIco   = cur ? this._nowIcon(cur) : this._nowIconIdle();
+      const heroName  = cur ? x(this._inputName(cur)) : "Nothing playing";
+      const heroMeta  = cur
+        ? (hasVol ? `Volume ${volVal}${muted?" · muted":""}` : (muted?"Muted":"Active"))
+        : "Tap a source below";
+
+      /* Zone selector — only show if more than one visible zone */
+      const zoneSelectorHTML = visibleZones.length > 1
+        ? `<div class="zsel-wrap">
+            <button class="zsel-btn" id="zsel-btn" aria-expanded="false">
+              <span id="zsel-lbl">Output ${out} · ${zoneName}</span>
+              ${I.chev}
+            </button>
+            <select class="zdrop" id="zdrop" aria-label="Select output zone">
+              ${visibleZones.map((z,i) => {
+                const lbl = this._zoneName(z);
+                return `<option value="${i}"${i===this._zone?" selected":""}>Output ${x(z.output||String.fromCharCode(65+i))} · ${x(lbl)}</option>`;
+              }).join("")}
+            </select>
+          </div>`
+        : `<span class="zsel-btn" style="cursor:default" id="zsel-lbl-only"><span id="zsel-lbl">Output ${out} · ${zoneName}</span></span>`;
+
+      /* Hero with optional mute button */
+      const heroHTML =
+        `<div class="${heroClass}" style="${heroStyle}">
+          <div class="now-ico-wrap" style="display:contents">${heroIco}</div>
+          <div class="now-text">
+            <div class="now-name" id="now-name">${heroName}</div>
+            <div class="now-meta" id="now-meta">${x(heroMeta)}</div>
+          </div>
+          ${zone.mute_switch
+            ? `<button class="now-mute${muted?" muted":""}" id="mbtn-hero" aria-label="${muted?"Unmute":"Mute"}">${muted?I.voff:I.von}</button>`
+            : ""}
+        </div>`;
+
+      /* Inline volume row — only when this zone has a volume entity */
+      const volHTML = hasVol
+        ? `<div class="vol-inline">
+            ${I.von}
+            <input class="vs" type="range" min="0" max="100" step="1" value="${volVal}" data-key="zh" aria-label="Volume">
+            <span class="vv" id="vv-zh">${volVal}</span>
+          </div>`
+        : "";
+
+      /* Source grid */
       const srcHTML = sourceList.length
         ? sourceList.map(name => {
             const act = !!(cur && cur === name);
-            return '<button class="sbtn'+(act?" on":"")+'" data-src="'+x(name)+'">'
+            return `<button class="sbtn${act?" on":""}" data-src="${x(name)}">`
               + this._srcIcon(name)
-              +'<span class="sname">'+x(this._inputName(name))+'</span>'
-              +'</button>';
+              + `<span class="sname">${x(this._inputName(name))}</span>`
+              + `</button>`;
           }).join("")
-        : '<div class="empty">No inputs found — check your MHUB hub is connected.</div>';
+        : '<div class="empty" style="grid-column:1/-1">No inputs found — check your MHUB hub is connected.</div>';
 
       body.innerHTML =
-        '<div class="now">'
-          +'<div class="now-ico-wrap">'+this._nowIcon(cur||"?")+'</div>'
-          +'<div class="sp">'
-            +'<div class="now-lbl">Now showing</div>'
-            +'<div class="now-val" id="now-src-val">'+(cur ? x(this._inputName(cur)) : "—")+'</div>'
-          +'</div>'
-          +'<div class="now-r">'
-            +'<div class="now-lbl">Output</div>'
-            +'<div class="now-val">'+out+' &middot; '+zoneName+'</div>'
-          +'</div>'
-          +(zone.mute_switch
-            ? '<button class="mb'+(muted?" muted":"")+'" id="mbtn">'+(muted?I.voff:I.von)+" "+(muted?"Unmute":"Mute")+'</button>'
-            : "")
-        +'</div>'
-        +'<div class="slbl">Switch source &rarr; Output '+out+'</div>'
-        +'<div class="sgrid">'+srcHTML+'</div>';
+        `<div class="now-head">
+          <span class="now-head-lbl">Now showing</span>
+          ${zoneSelectorHTML}
+        </div>`
+        + heroHTML
+        + volHTML
+        + `<div class="slbl">Sources</div>`
+        + `<div class="sgrid">${srcHTML}</div>`;
 
-      const mb2 = body.querySelector("#mbtn");
-      if (mb2) mb2.addEventListener("click", () => {
-        const on=this._sv(zone.mute_switch,"off")==="on";
-        this._call("switch",on?"turn_off":"turn_on",{entity_id:zone.mute_switch});
+      /* ── Bind events ── */
+
+      /* Zone dropdown (transparent <select> overlaid on the chevron button) */
+      const drop = body.querySelector("#zdrop");
+      if (drop) {
+        drop.addEventListener("change", () => {
+          this._zone = parseInt(drop.value);
+          this._optSrc = null;
+          try {
+            const key = "mhub_card_last_zone_" + (this._cfg.entry_id || "default");
+            const z = (this._visibleZones || [])[this._zone];
+            if (z) localStorage.setItem(key, z.output);
+          } catch(_) {}
+          this._sw();
+        });
+      }
+
+      /* Hero mute */
+      const mh = body.querySelector("#mbtn-hero");
+      if (mh) mh.addEventListener("click", () => {
+        const on = this._sv(zone.mute_switch,"off")==="on";
+        this._call("switch", on?"turn_off":"turn_on", {entity_id:zone.mute_switch});
       });
 
+      /* Inline volume slider */
+      if (hasVol) {
+        const sl = body.querySelector(".vol-inline .vs");
+        const vv = body.querySelector("#vv-zh");
+        if (sl) {
+          sl.addEventListener("mousedown",  () => { this._drag["zh"] = true; });
+          sl.addEventListener("touchstart", () => { this._drag["zh"] = true; }, {passive:true});
+          sl.addEventListener("input",      () => { if (vv) vv.textContent = sl.value; });
+          sl.addEventListener("change",     () => {
+            this._drag["zh"] = false;
+            this._call("number","set_value",{entity_id:zone.volume_entity, value:parseFloat(sl.value)});
+          });
+          sl.addEventListener("mouseup",  () => { this._drag["zh"] = false; });
+          sl.addEventListener("touchend", () => { this._drag["zh"] = false; });
+        }
+      }
+
+      /* Source tiles */
       body.querySelectorAll(".sbtn[data-src]").forEach(btn => {
         btn.addEventListener("click", () => {
           if (!zone.media_player) return;
           const src = btn.dataset.src;
-          /* Store optimistic selection so live updates don't revert the UI
-             before HA confirms the new source */
+          /* Optimistic cache so live updates don't revert before HA confirms */
           this._optSrc = { mp: zone.media_player, src };
-          /* Optimistic UI update */
-          body.querySelectorAll(".sbtn").forEach(b => {
-            b.classList.remove("on");
-            const sn=b.querySelector(".sname"); if(sn) sn.style.color="";
-          });
+          /* Optimistic UI */
+          body.querySelectorAll(".sbtn").forEach(b => b.classList.remove("on"));
           btn.classList.add("on");
-          const sn3=btn.querySelector(".sname"); if(sn3) sn3.style.color="#3b8aff";
-          const nv2=body.querySelector("#now-src-val"); if(nv2) nv2.textContent=this._inputName(src);
-          const icoWrap2=body.querySelector(".now-ico-wrap");
-          if (icoWrap2) icoWrap2.innerHTML = this._nowIcon(src);
+          const b      = brand(src);
+          const nowEl  = body.querySelector(".now");
+          const ico    = body.querySelector(".now-ico-wrap");
+          const nm     = body.querySelector("#now-name");
+          const mt     = body.querySelector("#now-meta");
+          if (nowEl) {
+            nowEl.classList.remove("idle");
+            nowEl.style.background = b.bg;
+            nowEl.style.color      = b.fg;
+          }
+          if (ico) ico.innerHTML = this._nowIcon(src);
+          if (nm)  nm.textContent = this._inputName(src);
+          if (mt)  mt.textContent = hasVol ? `Volume ${volVal}${muted?" · muted":""}` : (muted?"Muted":"Active");
           this._call("media_player","select_source",{entity_id:zone.media_player,source:src});
         });
       });
