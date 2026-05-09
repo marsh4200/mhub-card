@@ -454,7 +454,7 @@
     }
     .seq-run.fired svg { color: var(--mh-success); }
 
-    /* legacy grid (retained for fallback) */
+    /* legacy grid (retained for safety / fallback) */
     .seqg {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
@@ -481,71 +481,6 @@
       color: var(--mh-success);
     }
     .seqb.fired svg { color: var(--mh-success); }
-
-    /* ─── hub picker (multi-hub setups) ─── */
-    .hubpick {
-      padding: 28px 20px;
-      display: flex; flex-direction: column; align-items: stretch; gap: 16px;
-    }
-    .hubpick-title {
-      font-size: 15px; font-weight: 600; letter-spacing: -.01em;
-      color: var(--mh-text);
-      text-align: center;
-    }
-    .hubpick-sub {
-      font-size: 12px; color: var(--mh-text-2);
-      text-align: center; line-height: 1.5;
-      margin-top: -10px;
-    }
-    .hubpick-list {
-      display: flex; flex-direction: column; gap: 8px;
-      margin-top: 4px;
-    }
-    .hubpick-btn {
-      padding: 14px 16px;
-      border-radius: 12px;
-      border: 1px solid var(--mh-border);
-      background: var(--mh-surface);
-      color: var(--mh-text);
-      font-size: 14px; font-weight: 500;
-      font-family: inherit;
-      cursor: pointer;
-      display: flex; align-items: center; gap: 12px;
-      text-align: left;
-      transition: border-color .15s, background .15s, transform .08s;
-    }
-    .hubpick-btn:hover  { border-color: var(--mh-accent); background: var(--mh-surface-2); }
-    .hubpick-btn:active { transform: scale(.98); }
-    .hubpick-ico {
-      width: 36px; height: 36px; flex-shrink: 0;
-      border-radius: 10px;
-      background: color-mix(in srgb, var(--mh-accent) 14%, transparent);
-      color: var(--mh-accent);
-      display: flex; align-items: center; justify-content: center;
-    }
-    .hubpick-ico svg { width: 18px; height: 18px; display: block; }
-    .hubpick-text { flex: 1; min-width: 0; }
-    .hubpick-name {
-      font-size: 14px; font-weight: 600;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-    .hubpick-meta {
-      font-size: 11px; color: var(--mh-text-2);
-      margin-top: 2px;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-    .hub-switch-btn {
-      font-size: 11px; color: var(--mh-text-2);
-      background: transparent;
-      border: 1px solid var(--mh-border);
-      border-radius: 8px;
-      padding: 4px 9px;
-      cursor: pointer;
-      font-family: inherit;
-      flex-shrink: 0;
-      transition: color .15s, border-color .15s;
-    }
-    .hub-switch-btn:hover { color: var(--mh-accent); border-color: var(--mh-accent); }
 
     /* ─── IR / CEC accordions ─── */
     .irdev {
@@ -702,7 +637,7 @@
        the fix for multi-hub setups: without it, two physical MHUBs on the
        same network would have their zones, sequences, and IR commands
        merged into one card. With it, each card instance sees only the
-       entities belonging to its selected hub. */
+       entities belonging to the entry_id saved in its config. */
     const all = entryEntities && entryEntities.size
       ? allStates.filter(function(s){ return entryEntities.has(s.entity_id); })
       : allStates;
@@ -929,6 +864,74 @@
       this.dispatchEvent(new CustomEvent("config-changed", { detail:{ config: cfg }, bubbles:true, composed:true }));
     }
 
+    /* Render the dedicated hub-picker step shown when 2+ MHUBs exist and the
+       user hasn't bound this card to one yet. Saving a choice writes
+       cfg.entry_id, which then permanently locks this card to that hub. */
+    _renderHubPicker(entryIds) {
+      const names = this._entryNames || {};
+      const counts = this._entryEntsMap || {};
+      this.innerHTML = `
+        <style>
+          .pk { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; padding:12px 0 16px; }
+          .pk-title { font-size:15px; font-weight:600; color:var(--primary-text-color,#1a1a1a);
+                      margin-bottom:6px; }
+          .pk-sub { font-size:12px; color:var(--secondary-text-color,#888);
+                    line-height:1.5; margin-bottom:14px; }
+          .pk-list { display:flex; flex-direction:column; gap:8px; }
+          .pk-btn { display:flex; align-items:center; gap:12px;
+                    padding:14px 16px; border-radius:10px;
+                    border:1px solid var(--divider-color,#d0d4de);
+                    background:var(--card-background-color,#fff);
+                    color:var(--primary-text-color,#1a1a1a);
+                    font-family:inherit; font-size:14px; cursor:pointer;
+                    text-align:left; transition:border-color .15s, background .15s; }
+          .pk-btn:hover { border-color:var(--primary-color,#3b8aff);
+                          background:color-mix(in srgb, var(--primary-color,#3b8aff) 6%, transparent); }
+          .pk-ico { width:36px; height:36px; flex-shrink:0; border-radius:8px;
+                    background:color-mix(in srgb, var(--primary-color,#3b8aff) 14%, transparent);
+                    color:var(--primary-color,#3b8aff);
+                    display:flex; align-items:center; justify-content:center; }
+          .pk-ico svg { width:18px; height:18px; }
+          .pk-text { flex:1; min-width:0; }
+          .pk-name { font-weight:600; font-size:14px;
+                     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+          .pk-meta { font-size:11px; color:var(--secondary-text-color,#888);
+                     margin-top:2px;
+                     overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+          .pk-note { margin-top:14px; padding:10px 12px; border-radius:8px;
+                     background:color-mix(in srgb, var(--primary-color,#3b8aff) 8%, transparent);
+                     font-size:11px; color:var(--secondary-text-color,#666);
+                     line-height:1.5; }
+        </style>
+        <div class="pk">
+          <div class="pk-title">Which MHUB should this card control?</div>
+          <div class="pk-sub">${entryIds.length} MHUBs detected on your network. Pick the one this card is for — once saved, this card will only control that hub. To control another hub, add a new card.</div>
+          <div class="pk-list">
+            ${entryIds.map(eid => {
+              const nm   = names[eid] || ("MHUB " + eid.slice(0, 6));
+              const cnt  = (counts[eid] || new Set()).size;
+              return `<button class="pk-btn" data-entry="${x(eid)}">
+                <div class="pk-ico">${I.logo}</div>
+                <div class="pk-text">
+                  <div class="pk-name">${x(nm)}</div>
+                  <div class="pk-meta">${cnt} entities · ${x(eid.slice(0, 8))}…</div>
+                </div>
+              </button>`;
+            }).join("")}
+          </div>
+          <div class="pk-note">💡 Tip: each card you add can control a different MHUB — the one you pick here is saved into the card and can't bleed across.</div>
+        </div>`;
+
+      this.querySelectorAll(".pk-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const c = Object.assign({}, this._cfg || {}, { entry_id: btn.dataset.entry });
+          this._save(c);
+          /* setConfig→_render will be called by HA after the config-changed event;
+             that pass will see entry_id is set and skip the picker. */
+        });
+      });
+    }
+
     /* Fetch entity + device registry so the editor can show accurate
        sequence/IR/CEC counts and so discoverMhub() returns the same
        data the main card sees. Without this the editor's sequence
@@ -959,18 +962,20 @@
         });
         const seqEids = new Set(), irEids = new Set(), cecEids = new Set(), mhubEids = new Set();
         const entityDeviceNames = {};
-        const entryEntsMap = {};
-        const entryNames   = {};
+        const entryEntsMap = {};   /* entry_id → Set<entity_id> */
+        const entryNames   = {};   /* entry_id → human-friendly hub name (from hub-level device) */
+
         (entityEntries || []).filter(e => e.platform === "mhub").forEach(e => {
           mhubEids.add(e.entity_id);
           const info = deviceIdToInfo[e.device_id] || {};
           if (info.name) entityDeviceNames[e.entity_id] = info.name;
 
-          /* Track which config entry this entity belongs to */
+          /* Group by config entry: this is what makes per-card hub isolation possible */
           const eid = e.config_entry_id || (info.cfgEntries || [])[0] || null;
           if (eid) {
             if (!entryEntsMap[eid]) entryEntsMap[eid] = new Set();
             entryEntsMap[eid].add(e.entity_id);
+            /* Hub-level device's identifier === entry_id; capture its name */
             if (info.identifier === eid && info.name && !entryNames[eid]) {
               entryNames[eid] = info.name;
             }
@@ -988,11 +993,37 @@
           else if (isCEC) cecEids.add(e.entity_id);
           else            seqEids.add(e.entity_id);
         });
+
+        /* Defensive: capture hub names even if a hub has zero entities yet */
+        (deviceEntries || []).forEach(d => {
+          (d.identifiers || []).forEach(p => {
+            if (p[0] !== "mhub") return;
+            (d.config_entries || []).forEach(eid => {
+              if (!entryEntsMap[eid]) entryEntsMap[eid] = new Set();
+              if (p[1] === eid && d.name && !entryNames[eid]) {
+                entryNames[eid] = d.name;
+              }
+            });
+          });
+        });
+
         this._mhubEntityIds = mhubEids;
         this._mhubRegistry  = { seqEids, irEids, cecEids };
         this._deviceNames   = entityDeviceNames;
         this._entryEntsMap  = entryEntsMap;
         this._entryNames    = entryNames;
+
+        /* Auto-fill entry_id when there's exactly one hub — preserves the
+           zero-config experience for users with a single MHUB.
+           This is fired BEFORE _render() so the UI never shows the picker
+           in that case. */
+        const entryIds = Object.keys(entryEntsMap);
+        if (entryIds.length === 1 && !this._cfg.entry_id) {
+          const onlyId = entryIds[0];
+          const c = Object.assign({}, this._cfg || {}, { entry_id: onlyId });
+          this._save(c);   /* dispatches config-changed; HA will call setConfig back */
+        }
+
         this._render();
       }).catch(() => {
         /* Retry up to 5 times with exponential backoff */
@@ -1008,10 +1039,27 @@
          _render on every config-changed event which destroys any focused input. */
       if (this.querySelector("input:focus, select:focus, textarea:focus")) return;
 
-      const cfg   = this._cfg || {};
-      /* Editor: when an explicit entry_id is set, restrict discovery to that
-         entry's entities so the preview reflects exactly what the card will
-         show. With no entry_id the editor shows aggregate info as before. */
+      const cfg = this._cfg || {};
+
+      /* HUB PICKER STEP ────────────────────────────────────────
+         When 2+ MHUBs are on the network and this card hasn't been bound to
+         one yet, the editor shows ONLY the hub picker. The user picks a hub,
+         that selection is saved to cfg.entry_id, and from that point on the
+         card is dedicated to that hub. To control a different hub the user
+         creates a new card. This is by design: per-room cards stay isolated
+         and a card never accidentally controls the wrong physical unit.
+
+         Single-hub installs auto-fill cfg.entry_id in _fetchRegistry() and
+         skip this step entirely — preserving the zero-config experience. */
+      const entryIds = this._entryEntsMap ? Object.keys(this._entryEntsMap) : [];
+      if (this._hass && entryIds.length >= 2 && !cfg.entry_id) {
+        this._renderHubPicker(entryIds);
+        return;
+      }
+
+      /* Editor preview: filter discovery to the bound entry's entities so the
+         counts and lists shown below reflect exactly what the saved card will
+         render. */
       const entryEnts = (cfg.entry_id && this._entryEntsMap)
         ? (this._entryEntsMap[cfg.entry_id] || null)
         : null;
@@ -1019,6 +1067,10 @@
         ? discoverMhub(this._hass, cfg.entry_id, this._mhubEntityIds, this._mhubRegistry, this._deviceNames || {}, entryEnts)
         : null;
       const found = disc && disc.found;
+
+      const lockedHubName = (cfg.entry_id && this._entryNames)
+        ? (this._entryNames[cfg.entry_id] || null)
+        : null;
 
       /* Collect all unique source names across all zones */
       const sourceNames = [];
@@ -1075,6 +1127,28 @@
           .uploading { font-size:11px; color:var(--secondary-text-color,#888); }
         </style>
         <div class="ed">
+          ${(lockedHubName && entryIds.length >= 2) ? `
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;
+                      background:color-mix(in srgb, var(--primary-color,#3b8aff) 10%, transparent);
+                      border:1px solid color-mix(in srgb, var(--primary-color,#3b8aff) 35%, transparent);
+                      margin-bottom:14px">
+            <div style="width:32px;height:32px;border-radius:8px;flex-shrink:0;
+                        background:color-mix(in srgb, var(--primary-color,#3b8aff) 20%, transparent);
+                        color:var(--primary-color,#3b8aff);
+                        display:flex;align-items:center;justify-content:center">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--secondary-text-color,#666)">Bound to MHUB</div>
+              <div style="font-size:14px;font-weight:600;color:var(--primary-text-color,#1a1a1a);margin-top:2px;
+                          overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${x(lockedHubName)}</div>
+            </div>
+            <button id="ov-unbind" style="font-size:11px;padding:5px 10px;border-radius:6px;
+                        border:1px solid var(--divider-color,#d0d4de);
+                        background:transparent;color:var(--secondary-text-color,#666);
+                        cursor:pointer;font-family:inherit;flex-shrink:0">Change…</button>
+          </div>
+          ` : ""}
           <div class="sec">Auto-discovery status</div>
           <div class="row"><span class="rk">MHUB detected</span>
             <span class="rv ${found?"ok":"warn"}">${found?"✓ Yes":"✗ Not found"}</span></div>
@@ -1139,37 +1213,6 @@
             <label>Card title (leave blank for auto)</label>
             <input type="text" id="ov-title" value="${(cfg.title||"")}" placeholder="Auto-detected from your hub">
           </div>
-          ${(() => {
-            /* When 2+ MHUBs are present, render a dropdown so the user can
-               pin a specific one without having to know its entry_id. With
-               <2 hubs we keep the plain text input — same as before. */
-            const entries = this._entryEntsMap ? Object.keys(this._entryEntsMap) : [];
-            if (entries.length >= 2) {
-              const opts = entries.map(eid => {
-                const nm  = (this._entryNames || {})[eid] || ("MHUB " + eid.slice(0,6));
-                const sel = (cfg.entry_id === eid) ? " selected" : "";
-                return `<option value="${x(eid)}"${sel}>${x(nm)} · ${x(eid.slice(0,8))}…</option>`;
-              }).join("");
-              return `
-                <div class="field">
-                  <label>Which MHUB should this card control?</label>
-                  <select id="ov-entry-sel"
-                          style="width:100%;padding:8px 10px;border-radius:6px;
-                                 border:1px solid var(--divider-color,#ccc);
-                                 background:var(--card-background-color,#fff);
-                                 color:var(--primary-text-color,#333);
-                                 font-size:14px;font-family:inherit">
-                    <option value=""${cfg.entry_id?"":" selected"}>Auto (let user pick)</option>
-                    ${opts}
-                  </select>
-                </div>`;
-            }
-            return `
-              <div class="field">
-                <label>Config entry ID (only needed for multiple hubs)</label>
-                <input type="text" id="ov-entry" value="${(cfg.entry_id||"")}" placeholder="Leave blank for auto">
-              </div>`;
-          })()}
         </div>`;
 
       /* ── Zone alias listeners ── */
@@ -1202,26 +1245,24 @@
         });
       });
 
-      /* ── Text field listeners ──
-         Note: the entry-id control may be either a text input (#ov-entry, when
-         <2 hubs detected) or a select (#ov-entry-sel, when 2+ hubs detected). */
-      const saveOverrides = () => {
-        const c = Object.assign({}, this._cfg || {});
-        const titleEl = this.querySelector("#ov-title");
-        const entryEl = this.querySelector("#ov-entry") || this.querySelector("#ov-entry-sel");
-        c.title    = titleEl ? (titleEl.value.trim() || undefined) : c.title;
-        c.entry_id = entryEl ? (entryEl.value.trim() || undefined) : c.entry_id;
-        ["title", "entry_id"].forEach(k => { if (!c[k]) delete c[k]; });
-        this._save(c);
-      };
+      /* ── Text field listeners ── */
       const titleEl = this.querySelector("#ov-title");
-      if (titleEl) titleEl.addEventListener("blur", saveOverrides);
-      const entryInput = this.querySelector("#ov-entry");
-      if (entryInput) entryInput.addEventListener("blur", saveOverrides);
-      const entrySel = this.querySelector("#ov-entry-sel");
-      if (entrySel) entrySel.addEventListener("change", () => {
-        saveOverrides();
-        this._render();   /* re-render so input/output lists reflect the picked hub */
+      if (titleEl) titleEl.addEventListener("blur", () => {
+        const c = Object.assign({}, this._cfg || {});
+        c.title = titleEl.value.trim() || undefined;
+        if (!c.title) delete c.title;
+        this._save(c);
+      });
+
+      /* ── "Change…" button on the bound-hub banner ──
+         Clears entry_id so the next render shows the hub picker again.
+         Only present when 2+ hubs exist. */
+      const unbind = this.querySelector("#ov-unbind");
+      if (unbind) unbind.addEventListener("click", () => {
+        const c = Object.assign({}, this._cfg || {});
+        delete c.entry_id;
+        this._save(c);
+        this._render();
       });
 
       /* ── Icon row listeners ── */
@@ -1369,9 +1410,7 @@
       this._zone   = 0;
       this._ready  = false;
       this._drag   = {};     /* slider drag state */
-      this._activeEntry  = null;   /* selected hub entry_id (multi-hub) */
-      this._entries      = [];     /* [{ entry_id, name, entityCount }] from registry */
-      this._entryEntsMap = {};     /* entry_id -> Set<entity_id> */
+      this._entryEntsMap = {};   /* entry_id → Set<entity_id> (from registry) */
     }
 
     static getConfigElement() { return document.createElement("mhub-card-editor"); }
@@ -1393,15 +1432,8 @@
 
     set hass(h) {
       this._hass = h;
-      if (!this._ready) {
-        /* If the picker is currently displayed, don't trigger _init again on
-           every state update — _init has already finished, we're just waiting
-           for the user to pick. */
-        if (this._entries && this._entries.length > 1 && !this._activeEntry && !this._initPending) return;
-        this._init();
-      } else {
-        this._live();
-      }
+      if (!this._ready) this._init();
+      else              this._live();
     }
 
     getCardSize() { return 6; }
@@ -1464,26 +1496,15 @@
       if (!this._hass) return;
       if (this._initPending) return;   /* prevent concurrent inits */
       this._initPending = true;
-
-      /* Show a transient loading shell so the card isn't blank during the
-         registry round-trip. We need the registry first to know how many
-         MHUB integrations are present before deciding what to render. */
-      if (!this._sh.firstChild) {
-        const sh = this._sh;
-        const style = document.createElement("style");
-        style.textContent = CSS;
-        sh.appendChild(style);
-        const wrap = document.createElement("div");
-        wrap.className = "card";
-        wrap.innerHTML = `<div class="loading">Loading MHUB…</div>`;
-        sh.appendChild(wrap);
-      }
-
       /* Preserve the current page so a config-changed rebuild doesn't jump back to "switch" */
       const savedPage = this._page || "switch";
+      this._buildCard(new Set()).catch(() => {});
+      this._page = savedPage;
+      /* Re-apply the saved page so nav highlight and content are correct after rebuild */
+      this._sh.querySelectorAll(".nb").forEach(n => n.classList.toggle("on", n.dataset.p === savedPage));
+      this._sh.querySelectorAll(".pg").forEach(p => p.classList.toggle("on", p.id === "pg-" + savedPage));
 
-      /* Fetch entity + device registry to reliably split sequences vs IR vs source buttons,
-         AND to enumerate all MHUB config entries so multi-hub setups can be disambiguated.
+      /* Fetch entity + device registry to reliably split sequences vs IR vs source buttons.
          Device identifiers from button.py:
            sequences  → hub device:  (DOMAIN, entry_id)
            IR buttons → (DOMAIN, {entry_id}_display_{device_key}) or (DOMAIN, {entry_id}_source_{device_key})
@@ -1496,7 +1517,7 @@
           this._hass.callWS({ type: "config/entity_registry/list" }),
           this._hass.callWS({ type: "config/device_registry/list" }),
         ]).then(([entityEntries, deviceEntries]) => {
-          /* Build map: device_id → { identifier, name, model, config_entry_ids } */
+          /* Build map: device_id → { identifier, name, model, cfgEntries } */
           const deviceIdToInfo = {};
           (deviceEntries || []).forEach(function(d) {
             (d.identifiers || []).forEach(function(pair) {
@@ -1505,7 +1526,6 @@
                   identifier: pair[1],
                   name:       d.name || "",
                   model:      d.model || "",
-                  /* HA exposes config_entries (array) on devices */
                   cfgEntries: d.config_entries || [],
                 };
               }
@@ -1523,35 +1543,29 @@
           const irEids   = new Set();
           const cecEids  = new Set();
           const mhubEids = new Set();
-
-          /* Per-entry entity sets — the heart of multi-hub support.
-             entry_id → Set<entity_id>  built from entity registry's config_entry_id field. */
+          /* Per-entry entity map — drives the multi-hub filter. */
           const entryEntsMap = {};
-          /* entry_id → human-friendly hub name (from the hub-level device, identifier === entry_id) */
-          const entryNames = {};
+
+          /* Build set of pure zone labels for exclusion */
+          const zoneNames = new Set(
+            (deviceEntries || [])
+              .filter(function(d){ return (d.identifiers||[]).some(function(p){ return p[0]==="mhub"; }); })
+              .map(function(d){ return (d.name||"").toLowerCase(); })
+          );
 
           (entityEntries || []).filter(function(e){ return e.platform === "mhub"; }).forEach(function(e) {
             mhubEids.add(e.entity_id);
 
-            /* Tag this entity with its config entry. The entity registry exposes
-               config_entry_id on each entry. Fall back to the device's first
-               config_entry if missing. */
-            const eid = e.config_entry_id
-              || ((deviceIdToInfo[e.device_id] || {}).cfgEntries || [])[0]
-              || null;
+            /* Track entity → config_entry_id binding so multi-hub setups can be split */
+            const info  = deviceIdToInfo[e.device_id] || {};
+            const eid   = e.config_entry_id || (info.cfgEntries || [])[0] || null;
             if (eid) {
               if (!entryEntsMap[eid]) entryEntsMap[eid] = new Set();
               entryEntsMap[eid].add(e.entity_id);
-              /* Capture hub display name from the hub device — its identifier === entry_id */
-              const info = deviceIdToInfo[e.device_id];
-              if (info && info.identifier === eid && info.name && !entryNames[eid]) {
-                entryNames[eid] = info.name;
-              }
             }
 
             const domain = e.entity_id.split(".")[0];
             if (domain !== "button") return;
-            const info  = deviceIdToInfo[e.device_id] || {};
             const model = (info.model || "").toLowerCase();
             const name  = (info.name  || "").toLowerCase();
             const isIR  = model === "mhub source ir"
@@ -1564,29 +1578,6 @@
             else            seqEids.add(e.entity_id);
           });
 
-          /* Second pass for any hub-level devices we didn't catch (e.g. an entry with
-             no entities yet — shouldn't happen, but defensive). */
-          (deviceEntries || []).forEach(function(d) {
-            (d.identifiers || []).forEach(function(p) {
-              if (p[0] !== "mhub") return;
-              (d.config_entries || []).forEach(function(eid) {
-                if (!entryEntsMap[eid]) entryEntsMap[eid] = new Set();
-                if (p[1] === eid && d.name && !entryNames[eid]) {
-                  entryNames[eid] = d.name;
-                }
-              });
-            });
-          });
-
-          /* Build the entries list for the picker */
-          const entries = Object.keys(entryEntsMap).map(function(eid) {
-            return {
-              entry_id:    eid,
-              name:        entryNames[eid] || ("MHUB " + eid.slice(0, 6)),
-              entityCount: entryEntsMap[eid].size,
-            };
-          });
-
           /* Build map: entity_id → device name (for IR grouping labels) */
           const entityDeviceNames = {};
           (entityEntries || []).filter(function(e){ return e.platform === "mhub"; }).forEach(function(e) {
@@ -1597,121 +1588,41 @@
           this._mhubEntityIds   = mhubEids;
           this._mhubRegistry    = { seqEids, irEids, cecEids };
           this._deviceNames     = entityDeviceNames;
-          this._entries         = entries;
           this._entryEntsMap    = entryEntsMap;
 
-          /* Decide which entry is active.
-             Precedence:
-               1. cfg.entry_id (explicit YAML override) → always wins
-               2. Single entry detected → auto-select
-               3. Multiple entries, no current selection → show picker
-                  (Per design: ALWAYS show the picker on first load, even
-                   if a previous selection exists in localStorage.)
-               4. Already selected this session → keep it. */
-          if (this._cfg.entry_id) {
-            this._activeEntry = this._cfg.entry_id;
-          } else if (entries.length === 1) {
-            this._activeEntry = entries[0].entry_id;
-          } else if (entries.length === 0) {
-            /* No MHUB entries at all — fall through to legacy global discovery */
-            this._activeEntry = null;
-          }
-          /* else: leave _activeEntry as-is (null on first run → picker will render) */
-
-          this._initPending = false;
-
-          if (entries.length > 1 && !this._activeEntry) {
-            this._renderHubPicker();
-            return;
-          }
-
-          /* Build the real card now that we know which hub to use */
-          this._buildCard().then(() => {
-            this._page = savedPage;
-            this._sh.querySelectorAll(".nb").forEach(n => n.classList.toggle("on", n.dataset.p === savedPage));
-            this._sh.querySelectorAll(".pg").forEach(p => p.classList.toggle("on", p.id === "pg-" + savedPage));
-            this._live();
-          });
+          /* Per-card hub isolation: when cfg.entry_id is set (saved by the
+             editor), restrict every discovery lookup to that entry's
+             entities. With a single hub or no entry_id, behaves as before. */
+          const entryEnts = this._cfg.entry_id ? (entryEntsMap[this._cfg.entry_id] || null) : null;
+          this._disc = discoverMhub(this._hass, this._cfg.entry_id, mhubEids, { seqEids, irEids, cecEids }, entityDeviceNames, entryEnts);
+          /* Restore the page the user was on before the registry fetch completed */
+          this._page = savedPage;
+          this._sh.querySelectorAll(".nb").forEach(n => n.classList.toggle("on", n.dataset.p === savedPage));
+          this._sh.querySelectorAll(".pg").forEach(p => p.classList.toggle("on", p.id === "pg-" + savedPage));
+          this._live();
         })
         .catch(() => {
           /* Registry unavailable (e.g. off-network, WS timeout).
              Retry up to 5 times with exponential backoff so the card
              self-heals when the connection is restored. */
-          this._initPending = false;
           if (attempt < 5) {
             const delay = Math.min(2000 * Math.pow(2, attempt - 1), 30000);
             setTimeout(() => {
-              if (this._hass) { this._initPending = true; _fetchRegistry(attempt + 1); }
+              if (this._hass) _fetchRegistry(attempt + 1);
             }, delay);
           }
-        });
+          /* The card already rendered with hass.states data — it just won't
+             have sequence/IR classification until the registry comes back. */
+        })
+        .finally(() => { this._initPending = false; });
       };
       _fetchRegistry(1);
     }
 
-    /* Render the hub picker overlay shown when 2+ MHUB integrations exist
-       and no specific one has been chosen yet. */
-    _renderHubPicker() {
-      const sh = this._sh;
-      sh.innerHTML = "";
-      const style = document.createElement("style");
-      style.textContent = CSS;
-      sh.appendChild(style);
-
-      const card = document.createElement("div");
-      card.className = "card";
-
-      const list = this._entries.map((e) => {
-        return `<button class="hubpick-btn" data-entry="${x(e.entry_id)}">
-          <div class="hubpick-ico">${I.logo}</div>
-          <div class="hubpick-text">
-            <div class="hubpick-name">${x(e.name)}</div>
-            <div class="hubpick-meta">${e.entityCount} entities · ${x(e.entry_id.slice(0,8))}…</div>
-          </div>
-        </button>`;
-      }).join("");
-
-      card.innerHTML = `
-        <div class="hdr">
-          <div class="hdr-logo">${I.logo}</div>
-          <div class="hdr-text">
-            <div class="hdr-title">Select MHUB</div>
-            <div class="hdr-sub">${this._entries.length} hubs detected</div>
-          </div>
-        </div>
-        <div class="hubpick">
-          <div class="hubpick-sub">Choose which MHUB this card should control. You can switch later from the header.</div>
-          <div class="hubpick-list">${list}</div>
-        </div>`;
-      sh.appendChild(card);
-
-      sh.querySelectorAll(".hubpick-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          this._selectHub(btn.dataset.entry);
-        });
-      });
-    }
-
-    /* User picked a hub from the picker — store the choice and build the
-       real card. Called from the picker buttons and the header switch button. */
-    _selectHub(entryId) {
-      this._activeEntry = entryId;
-      this._ready = false;
-      this._page  = "switch";
-      this._buildCard().then(() => { this._live(); });
-    }
-
-    _buildCard() {
+    _buildCard(mhubEntityIds) {
       return new Promise((resolve) => {
-        const entryEnts = this._activeEntry ? (this._entryEntsMap[this._activeEntry] || null) : null;
-        this._disc  = discoverMhub(
-          this._hass,
-          this._activeEntry || this._cfg.entry_id,
-          this._mhubEntityIds,
-          this._mhubRegistry || null,
-          this._deviceNames || {},
-          entryEnts
-        );
+        const entryEnts = this._cfg.entry_id ? (this._entryEntsMap[this._cfg.entry_id] || null) : null;
+        this._disc  = discoverMhub(this._hass, this._cfg.entry_id, mhubEntityIds, this._mhubRegistry || null, this._deviceNames || {}, entryEnts);
         this._zone  = 0;
         this._zoneRestored = false;   /* allow localStorage restore on next _sw() */
         const sh    = this._sh;
@@ -1740,26 +1651,13 @@
         + `</button>`
       ).join("");
       const isOn  = !d.power_switch || (this._hass && d.power_switch && this._sv(d.power_switch,"on")==="on");
-
-      /* Hub display name: explicit cfg.title wins, else the picked entry's
-         registered name, else fall back to "MHUB". */
-      const activeName = this._activeEntry
-        ? (this._entries.find(e => e.entry_id === this._activeEntry) || {}).name
-        : null;
-      const headerTitle = this._cfg.title || activeName || d.title || "MHUB";
-
-      /* Show the hub-switch button only when multiple hubs exist AND no explicit
-         entry_id override is set in YAML (the YAML pin should be respected). */
-      const showSwitch = (this._entries && this._entries.length > 1 && !this._cfg.entry_id);
-
       return `<div class="card">
         <div class="hdr">
           <div class="hdr-logo">${I.logo}</div>
           <div class="hdr-text">
-            <div class="hdr-title" id="htitle">${x(headerTitle)}</div>
+            <div class="hdr-title" id="htitle">${x(this._cfg.title||d.title||"MHUB")}</div>
             <div class="hdr-sub"   id="hsub">HDANYWHERE</div>
           </div>
-          ${showSwitch ? `<button class="hub-switch-btn" id="hubswitch" title="Switch hub" aria-label="Switch hub">Switch</button>` : ""}
           <div class="pill on" id="spill"><span class="pdot"></span><span id="stxt">Online</span></div>
           ${d.power_switch?`<button class="pw-btn${isOn?"":" off"}" id="pwbtn" title="System power" aria-label="System power">${I.power}</button>`:""}
         </div>
@@ -1799,24 +1697,10 @@
       const rb = this._el("rbtn");
       if (rb) rb.addEventListener("click", () => {
         /* re-discover in case integration reloaded */
-        const entryEnts = this._activeEntry ? (this._entryEntsMap[this._activeEntry] || null) : null;
-        this._disc = discoverMhub(
-          this._hass,
-          this._activeEntry || this._cfg.entry_id,
-          this._mhubEntityIds || new Set(),
-          this._mhubRegistry || null,
-          this._deviceNames || {},
-          entryEnts
-        );
+        const entryEnts = this._cfg.entry_id ? (this._entryEntsMap[this._cfg.entry_id] || null) : null;
+        this._disc = discoverMhub(this._hass, this._cfg.entry_id, this._mhubEntityIds || new Set(), this._mhubRegistry || null, this._deviceNames || {}, entryEnts);
         this._renderPage();
         const f = this._el("ftxt"); if (f) f.textContent = "Updated just now";
-      });
-      /* hub-switch button (only present in multi-hub setups) */
-      const hsb = this._el("hubswitch");
-      if (hsb) hsb.addEventListener("click", () => {
-        this._activeEntry = null;
-        this._ready = false;
-        this._renderHubPicker();
       });
     }
 
