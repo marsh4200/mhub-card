@@ -207,20 +207,27 @@
     /* ─── now-playing hero ─── */
     .now-head {
       display: flex; align-items: center; justify-content: space-between;
+      gap: 8px;
       margin-bottom: 10px;
     }
     .now-head-lbl {
       font-size: 11px; font-weight: 600; letter-spacing: .06em;
       text-transform: uppercase; color: var(--mh-text-3);
+      flex-shrink: 1; min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .zsel-btn {
       font-size: 12px; color: var(--mh-text-2);
       background: transparent; border: none;
       padding: 4px 8px; border-radius: 6px;
       cursor: pointer; display: flex; align-items: center; gap: 4px;
-      font-family: inherit; max-width: 65%;
+      font-family: inherit; min-width: 0; flex: 0 1 auto;
       white-space: nowrap; overflow: hidden;
     }
+    /* When the card is narrow, hide the "Now showing" label so the dropdown
+       has the full row to itself — prevents the output label being clipped to "Out…" */
+    @container (max-width: 360px) { .now-head-lbl { display: none; } }
+    @media (max-width: 360px) { .now-head-lbl { display: none; } }
     .zsel-btn:hover { color: var(--mh-text); background: var(--mh-surface); }
     .zsel-btn span { overflow: hidden; text-overflow: ellipsis; }
     .zsel-btn svg  { width: 14px; height: 14px; flex-shrink: 0; transition: transform .15s; }
