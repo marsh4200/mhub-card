@@ -21,7 +21,7 @@
 (function () {
   "use strict";
 
-  const VERSION = "6.1.0";
+  const VERSION = "6.1.1";
 
   /* ─── utilities ─────────────────────────────────────────── */
   function x(s) {
@@ -527,7 +527,15 @@
       background: color-mix(in srgb, var(--mh-accent) 16%, transparent);
     }
     .irdbody { padding: 4px 14px 14px; border-top: 1px solid var(--mh-border); }
+    .irloc {
+      font-size: 11px; font-weight: 600; letter-spacing: .04em;
+      color: var(--mh-text-3);
+      text-transform: uppercase;
+      padding-top: 14px;
+    }
+    .irloc.first { padding-top: 10px; }
     .irg { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 12px; }
+    .irloc + .irg { padding-top: 6px; }
     .irb {
       padding: 6px 13px; border-radius: 8px;
       border: 1px solid var(--mh-border);
@@ -2150,32 +2158,80 @@
 
       if (!irs.length&&!cecs.length) { body.innerHTML=`<div class="empty">No IR or CEC devices found.<br>Make sure IR packs are assigned to ports in the MHUB app, then reload the integration.</div>`; return; }
 
-      /* Track which device sections are expanded so re-renders preserve state. */
+      /* Track which pack sections are expanded so re-renders preserve state. */
       if (!this._irOpen) this._irOpen = new Set();
 
+      /* Split a device name into { pack, location }.
+         Integration name patterns (see button.py):
+           IR source  → "Source - {pack}"
+           IR display → "{zone} (Output X) - {pack}"  or  "Display - {pack}"
+           CEC        → "CEC - {zone}"               (we group these by the part after " - " too)
+         We split on the LAST " - " so pack names that themselves contain " - "
+         (rare, but possible) survive intact. */
+      const splitPack = (name) => {
+        const s = String(name || "");
+        const i = s.lastIndexOf(" - ");
+        if (i < 0) return { pack: s || "Other", location: "" };
+        return { pack: s.slice(i + 3).trim() || "Other", location: s.slice(0, i).trim() };
+      };
+
       const chev = `<svg class="irdchev" viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg>`;
-      const block=(devs,lbl)=>{
-        let h=`<div class="slbl">${lbl}</div>`;
-        devs.forEach(d=>{
-          const key   = lbl + "::" + d.name;
+
+      /* Group a flat list of devices by pack name, preserving original order. */
+      const groupByPack = (devs) => {
+        const map = new Map();
+        devs.forEach(d => {
+          const { pack, location } = splitPack(d.name);
+          if (!map.has(pack)) map.set(pack, { pack, locations: [] });
+          map.get(pack).locations.push({
+            location: location || d.name,
+            commands: d.commands || []
+          });
+        });
+        return [...map.values()];
+      };
+
+      const block = (devs, lbl) => {
+        const packs = groupByPack(devs);
+        let h = `<div class="slbl">${lbl}</div>`;
+        packs.forEach(p => {
+          const key   = lbl + "::pack::" + p.pack;
           const open  = this._irOpen.has(key) ? " open" : "";
-          const count = (d.commands||[]).length;
-          h+=`<details class="irdev"${open} data-irkey="${x(key)}">`
-            +  `<summary class="irdsum">${chev}<span class="irdtitle">${x(d.name)}</span><span class="irdcount">${count}</span></summary>`
-            +  `<div class="irdbody"><div class="irg">`;
-          (d.commands||[]).forEach(c=>{h+=`<button class="irb" data-eid="${x(c.entity)}">${x(c.name)}</button>`;});
-          h+=`</div></div></details>`;
+          const total = p.locations.reduce((n, l) => n + l.commands.length, 0);
+          h += `<details class="irdev"${open} data-irkey="${x(key)}">`
+             +   `<summary class="irdsum">${chev}<span class="irdtitle">${x(p.pack)}</span><span class="irdcount">${total}</span></summary>`
+             +   `<div class="irdbody">`;
+          /* If the pack only has one location, render commands flat — no need
+             for a sub-heading. Otherwise show each location as a sub-section. */
+          if (p.locations.length === 1) {
+            h += `<div class="irg">`;
+            p.locations[0].commands.forEach(c => {
+              h += `<button class="irb" data-eid="${x(c.entity)}">${x(c.name)}</button>`;
+            });
+            h += `</div>`;
+          } else {
+            p.locations.forEach((loc, idx) => {
+              h += `<div class="irloc${idx === 0 ? " first" : ""}">${x(loc.location)}</div>`
+                 + `<div class="irg">`;
+              loc.commands.forEach(c => {
+                h += `<button class="irb" data-eid="${x(c.entity)}">${x(c.name)}</button>`;
+              });
+              h += `</div>`;
+            });
+          }
+          h += `</div></details>`;
         });
         return h;
       };
-      let html="";
-      if (irs.length)  html+=block(irs,"IR commands");
-      if (cecs.length) { if(irs.length)html+=`<div class="div"></div>`; html+=block(cecs,"CEC commands"); }
-      body.innerHTML=html;
+
+      let html = "";
+      if (irs.length)  html += block(irs,  "IR commands");
+      if (cecs.length) { if (irs.length) html += `<div class="div"></div>`; html += block(cecs, "CEC commands"); }
+      body.innerHTML = html;
 
       /* Persist open/closed state across re-renders */
-      body.querySelectorAll("details.irdev").forEach(det=>{
-        det.addEventListener("toggle",()=>{
+      body.querySelectorAll("details.irdev").forEach(det => {
+        det.addEventListener("toggle", () => {
           const k = det.dataset.irkey;
           if (!k) return;
           if (det.open) this._irOpen.add(k);
@@ -2183,9 +2239,9 @@
         });
       });
 
-      body.querySelectorAll(".irb").forEach(btn=>btn.addEventListener("click",()=>{
-        if(btn.dataset.eid) this._call("button","press",{entity_id:btn.dataset.eid});
-        btn.classList.add("fired"); setTimeout(()=>btn.classList.remove("fired"),700);
+      body.querySelectorAll(".irb").forEach(btn => btn.addEventListener("click", () => {
+        if (btn.dataset.eid) this._call("button", "press", { entity_id: btn.dataset.eid });
+        btn.classList.add("fired"); setTimeout(() => btn.classList.remove("fired"), 700);
       }));
     }
 
